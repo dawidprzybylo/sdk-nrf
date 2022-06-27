@@ -23,6 +23,13 @@
 	};
 };
 
+
+/ {
+	chosen {
+		zephyr,entropy = &rng;
+	};
+};
+
 &pinctrl {
 	uart1_default_alt: uart1_default_alt {
 		group1 {

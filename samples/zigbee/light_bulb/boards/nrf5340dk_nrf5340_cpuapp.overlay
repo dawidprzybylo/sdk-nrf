@@ -11,6 +11,14 @@
 			pwms = <&pwm0 1 PWM_MSEC(20) PWM_POLARITY_INVERTED>;
 		};
 	};
+	nrf_radio_coex: radio_coex_three_wire {
+		status = "okay";
+		compatible = "generic-radio-coex-three-wire";
+		req-gpios =     <&gpio0 4 (GPIO_ACTIVE_HIGH)>;
+		pri-dir-gpios = <&gpio0 6 (GPIO_ACTIVE_HIGH)>;
+		grant-gpios =   <&gpio0 5 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+	};
+
 };
 
 &pwm0 {
