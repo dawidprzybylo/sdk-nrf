@@ -18,4 +18,11 @@
 	chosen {
 		zephyr,entropy = &rng;
 	};
+    nrf_radio_coex: radio_coex_three_wire {
+		status = "okay";
+		compatible = "generic-radio-coex-three-wire";
+		req-gpios =     <&gpio0 4 (GPIO_ACTIVE_HIGH)>;
+		pri-dir-gpios = <&gpio0 28 (GPIO_ACTIVE_HIGH)>;
+		grant-gpios =   <&gpio0 3 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+	};
 };
