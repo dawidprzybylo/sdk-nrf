@@ -52,7 +52,7 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
-      revision: 6257acfada15ba7f43a1ed38c69a1ca61ffc757c
+      revision: 8a249246bc2add52db9d1b9ee5db111e0ccda4c3
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -72,8 +72,9 @@ manifest:
           - cmsis
           - edtt
           - fatfs
+          - fff
           - hal_nordic
-          - hal_st # required for ST sensors (unrelated to STM32 MCUs)
+          - hal_st # required for ST sensors (unrealted to STM32 MCUs)
           - hal_wurthelektronik
           - liblc3
           - libmetal
@@ -81,6 +82,7 @@ manifest:
           - loramac-node
           - lvgl
           - lz4
+          - mbedtls
           - mipi-sys-t
           - nanopb
           - net-tools
@@ -100,29 +102,33 @@ manifest:
     #
     # Some of these are also Zephyr modules which have NCS-specific
     # changes.
-    - name: sdk-hostap
-      path: modules/lib/hostap
-      revision: 8d3f26d7da1b49815fbd0fe8335189cfac4ded85
-    - name: mcuboot
-      repo-path: sdk-mcuboot
-      revision: d97046ef74ccb932531521a8380c4a831cb344f4
-      path: bootloader/mcuboot
-    - name: mbedtls
-      path: modules/crypto/mbedtls
-      repo-path: sdk-mbedtls
-      revision: v3.1.0-ncs3-rc1
     - name: nrfxlib
       repo-path: sdk-nrfxlib
       path: nrfxlib
-      revision: be94cc3f090d3b5c9ed9aecb77edda98ba036120
+      revision: pull/1/head
+    - name: sdk-hostap
+      path: modules/lib/hostap
+      revision: 5ee5972d527ede375f982fcedaeea26f2fb03f10
+    - name: mcuboot
+      repo-path: sdk-mcuboot
+      revision: a343542d83ee5b4085d669732b37177b66379ad2
+      path: bootloader/mcuboot
+    - name: mbedtls-nrf
+      path: mbedtls
+      repo-path: sdk-mbedtls
+      revision: d540e87d63c1bf51856a88657c58abc021c7ad8f
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tf-m/trusted-firmware-m
-      revision: v1.6.0-ncs3-rc1
+      revision: cbf2b7209c8ed6ccb14b40cc463c6f84f9ef40ec
+    - name: tfm-mcuboot # This is used by the trusted-firmware-m module.
+      repo-path: sdk-mcuboot
+      path: modules/tee/tfm-mcuboot
+      revision: v1.7.2-ncs2
     - name: matter
       repo-path: sdk-connectedhomeip
       path: modules/lib/matter
-      revision: 2806b0bbc4b45d34ec4d5d6797ce1708989add43
+      revision: 470d1f92c078af1ad906c955e94d0064f53fb5f6
       submodules:
         - name: nlio
           path: third_party/nlio/repo
@@ -135,7 +141,7 @@ manifest:
     - name: nrf-802154
       repo-path: sdk-nrf-802154
       path: nrf-802154
-      revision: v2.3.0-rc1
+      revision: 7edd294a4909baec72b6102e61260dd654a0b162
       groups:
         - nrf-802154
     - name: cjson
@@ -144,12 +150,12 @@ manifest:
       revision: c6af068b7f05207b28d68880740e4b9ec1e4b50a
     - name: homekit
       repo-path: sdk-homekit
-      revision: v2.3.0-rc1
+      revision: feb0b267c8c8106cb6b7f6cd2933717fcd0c682b
       groups:
         - homekit
     - name: find-my
       repo-path: sdk-find-my
-      revision: v2.3.0-rc1
+      revision: 99d35d6777cb2aa552b0cad152ca7e60c42d3bc5
       groups:
         - find-my
     - name: azure-sdk-for-c
@@ -164,7 +170,7 @@ manifest:
       remote: throwtheswitch
     - name: memfault-firmware-sdk
       path: modules/lib/memfault-firmware-sdk
-      revision: 0.37.2
+      revision: 0.34.1
       remote: memfault
     - name: cirrus
       repo-path: sdk-mcu-drivers
@@ -173,10 +179,10 @@ manifest:
     - name: openthread
       repo-path: sdk-openthread
       path: modules/lib/openthread
-      revision: 2060039bbfec52ac00f22a7cc3213c2ab1df138e
+      revision: d7de66671ae8385e820f6b8405fb9527778bbe39
     - name: ant
       repo-path: sdk-ant
-      revision: 7df46a12ace258473c1f2b3b98de690b5799ac64
+      revision: 36b2ac9fd02988319e9dcebc578d8f9a9f5ff892
       remote: ant-nrfconnect
       groups:
         - ant
