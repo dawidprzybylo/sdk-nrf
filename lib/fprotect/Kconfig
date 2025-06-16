@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-if !ARM
+if X86
+
 config NRF_SPU_FLASH_REGION_SIZE
 	hex
 	default 0x1000
@@ -28,6 +29,7 @@ config NRF_ACL_FLASH_REGION_SIZE
 	default 0x1000
 	help
 	  Redefinition for the benefit of qemu_x86
+
 endif
 
 # Workaround for not being able to have commas in macro arguments
@@ -48,7 +50,11 @@ menuconfig FPROTECT
 	bool "Enable FPROTECT"
 	depends on SOC_FAMILY_NORDIC_NRF
 	depends on !(SOC_SERIES_NRF54LX && IS_SECURE_BOOTLOADER)
+	default y if MCUBOOT && (!SOC_SERIES_NRF54LX || (SOC_SERIES_NRF54LX && MCUBOOT_MCUBOOT_IMAGE_NUMBER = -1))
+	#enabled for nRF54L SoC's when MCUboot is the only one bootloader
 	select NRFX_RRAMC if SOC_SERIES_NRF54LX
+	#allow utilization of both nRF54L SoC's RRAMC regions.
+	imply FPROTECT_ALLOW_COMBINED_REGIONS if MCUBOOT && SOC_SERIES_NRF54LX && MCUBOOT_MCUBOOT_IMAGE_NUMBER = -1
 	help
 	  Enable the software library FPROTECT that may or may not be used
 	  by other systems to protect flash from writes and possibly also
@@ -56,6 +62,7 @@ menuconfig FPROTECT
 	  May use the HW peripherals BPROT, ACL, or SPU to achieve this.
 
 if FPROTECT
+
 config FPROTECT_APP
 	bool "Lock image partition using FPROTECT"
 	help

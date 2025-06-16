@@ -34,6 +34,18 @@ The following image gives an overview of the default architecture of the trusted
 External storage is not supported by the trusted storage library by default.
 To add support for external storage, implement a custom storage backend.
 
+Data handling contexts
+======================
+
+The trusted storage library handles sensitive data in the following two contexts:
+
+* Volatile - Before data is forwarded to the non-volatile storage and after it is retrieved from the non-volatile storage.
+* Non-volatile - When data is written to the non-volatile memory in encrypted form.
+
+In the case of the volatile context, the trusted storage library leverages the Authenticated Encryption with Associated Data (AEAD) encryption backend (:kconfig:option:`CONFIG_TRUSTED_STORAGE_BACKEND_AEAD`).
+It is used to encrypt and decrypt the assets that are securely stored in the non-volatile memory with authentication.
+You can configure AEAD with the set of Kconfig options described in the :ref:`trusted_storage_configuration` section.
+
 Interfaces
 ==========
 
@@ -89,6 +101,25 @@ Before using the trusted storage library with its default settings and options, 
     For more information about how to do this, see :ref:`zephyr:file_system_api`.
     Also, see the Mounting the Storage system section of the :ref:`ZMS documentation <zephyr:zms_api>`.
 
+
+Currently, the :ref:`lib_hw_unique_key` library is supported on nRF52840, nRF5340, and nRF54L devices (more may be supported in the future), but for most samples in the |NCS|, it is only enabled for the nRF5340 and nRF54L devices:
+
+* For nRF5340 devices, the HUK is generated at first boot and stored in the Key Management Unit (KMU).
+  No changes to the existing partition layout are needed for products in the field.
+* For nRF54L15 devices using TF-M, the HUK generation and management is handled by TF-M.
+
+  You can use the :ref:`lib_hw_unique_key` library with the nRF52840 SoC, but it requires employing the :ref:`bootloader` that would generate the AEAD key at first boot and store it in the dedicated HUK partition that can be accessed only by the CryptoCell peripheral.
+
+  .. note::
+
+     Modifying the partition layout, such as adding another partition in the FLASH layout, will break the firmware backward compatibility in already deployed devices.
+
+* Devices that do not have TrustZone separation (for example, nRF52840) use hardware unique keys to reach level 1 PSA certification.
+
+  .. note::
+
+     Any nRF52 Series devices that do not use NSIB need to use for example UID hashing for key derivation.
+
 .. _trusted_storage_configuration:
 
 Configuration
@@ -134,10 +165,12 @@ The following options are used to configure the AEAD backend and its behavior:
 Usage
 *****
 
-The trusted storage library can only be used on a build using a board target with :ref:`CMSE disabled <app_boards_spe_nspe_cpuapp>` (``/cpuapp``).
-When you build for ``/cpuapp``, you build the firmware for the application core without CMSE and thus no TF-M.
+The trusted storage library can only be used on a build without Trusted Firmware-M.
+
+This means that you must use a board target without :ref:`security by separation <ug_tfm_security_by_separation>` (``/cpuapp``).
+When you build for ``/cpuapp``, you build the firmware for the application core without Cortex-M Security Extensions (CMSE) and so without TF-M.
 The library can be used directly on such a build to store important assets.
-However, for cryptographic keys we suggest to use the `PSA functions for key management`_.
+However, for cryptographic keys, use the `PSA functions for key management`_.
 These APIs will internally use this library to store persistent keys.
 
 Dependencies

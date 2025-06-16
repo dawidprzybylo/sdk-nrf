@@ -23,7 +23,7 @@
 #include <security/cracen.h>
 #include <nrf_security_mutexes.h>
 
-#if CONFIG_CRACEN_HW_VERSION_LITE && !CONFIG_SOC_NRF54L20 && !CONFIG_SOC_NRF54L09
+#if CONFIG_CRACEN_HW_VERSION_LITE && !CONFIG_SOC_NRF54LM20A && !CONFIG_SOC_NRF54LV10A
 #error Check to see if the current board needs the IKG-PKE interrupt workaround or not, \
 then update this error
 #endif
@@ -45,6 +45,8 @@ then update this error
 
 #define PK_BUSY_MASK_BA414EP 0x00010000
 #define PK_BUSY_MASK_IK	     0x00050000
+
+#define IK_ENTROPY_ERROR     0xc6
 
 struct sx_pk_cnx {
 	struct sx_pk_req instance;
@@ -68,26 +70,33 @@ bool ik_is_busy(sx_pk_req *req)
 
 bool is_busy(sx_pk_req *req)
 {
+#if defined(CONFIG_CRACEN_IKG)
 	if (sx_pk_is_ik_cmd(req)) {
 		return ik_is_busy(req);
-	} else {
-		return ba414ep_is_busy(req);
 	}
+#endif
+
+	return ba414ep_is_busy(req);
 }
 
 void sx_clear_interrupt(sx_pk_req *req)
 {
 	sx_pk_wrreg(&req->regs, PK_REG_CONTROL, PK_RB_CONTROL_CLEAR_IRQ);
+
+#if defined(CONFIG_CRACEN_IKG)
 	if (sx_pk_is_ik_cmd(req)) {
 		sx_pk_wrreg(&req->regs, IK_REG_PK_CONTROL, IK_PK_CONTROL_CLEAR_IRQ);
 	}
+#endif
 }
 
 int read_status(sx_pk_req *req)
 {
+#if defined(CONFIG_CRACEN_IKG)
 	if (sx_pk_is_ik_cmd(req)) {
 		return sx_ik_read_status(req);
 	}
+#endif
 
 	uint32_t status = sx_pk_rdreg(&req->regs, PK_REG_STATUS);
 
@@ -97,15 +106,27 @@ int read_status(sx_pk_req *req)
 int sx_pk_wait(sx_pk_req *req)
 {
 	do {
-#ifndef CONFIG_CRACEN_HW_VERSION_LITE
-		/* In CRACEN Lite the PKE-IKG interrupt is only active when in PK mode.
-		 * This is to work around a hardware issue where the interrupt is never cleared.
-		 * Therefore sx_pk_wait needs to use polling and not interrupts for CRACEN Lite.
-		 */
-		if (!sx_pk_is_ik_cmd(req)) {
-			cracen_wait_for_pke_interrupt();
+		if (!IS_ENABLED(CONFIG_CRACEN_HW_VERSION_LITE) &&
+		    IS_ENABLED(CONFIG_CRACEN_USE_INTERRUPTS)) {
+			/* In CRACEN Lite the PKE-IKG interrupt is only active when in PK mode.
+			 * This is to work around a hardware issue where the interrupt is never
+			 * cleared. Therefore sx_pk_wait needs to use polling and not interrupts for
+			 * CRACEN Lite.
+			 */
+			if (IS_ENABLED(CONFIG_CRACEN_IKG)) {
+				if (!sx_pk_is_ik_cmd(req)) {
+					cracen_wait_for_pke_interrupt();
+				}
+			}
+		} else if (IS_ENABLED(CONFIG_CRACEN_HW_VERSION_LITE)) {
+			/* In CRACEN Lite the IKG sometimes fails due to an entropy error.
+			 * Error code is returned here so the entire operation can be rerun
+			 */
+			if (sx_pk_rdreg(&req->regs, IK_REG_STATUS) == IK_ENTROPY_ERROR) {
+				return SX_ERR_RETRY;
+			}
 		}
-#endif
+
 	} while (is_busy(req));
 
 	return read_status(req);
@@ -207,17 +228,22 @@ struct sx_pk_acq_req sx_pk_acquire_req(const struct sx_pk_cmd_def *cmd)
 	req.req->cnx = &silex_pk_engine;
 
 	cracen_acquire();
-#ifndef CONFIG_CRACEN_HW_VERSION_LITE
-	/* In CRACEN Lite the PKE-IKG interrupt is only active when in PK mode.
-	 * This is to work around a hardware issue where the interrupt is never cleared.
-	 * Therefore it is not enabled here for Cracen Lite.
-	 */
-	nrf_cracen_int_enable(NRF_CRACEN, NRF_CRACEN_INT_PKE_IKG_MASK);
-#endif
+	if (!IS_ENABLED(CONFIG_CRACEN_HW_VERSION_LITE) &&
+	    IS_ENABLED(CONFIG_CRACEN_USE_INTERRUPTS)) {
+		/* In CRACEN Lite the PKE-IKG interrupt is only active when in PK mode.
+		 * This is to work around a hardware issue where the interrupt is never cleared.
+		 * Therefore it is not enabled here for Cracen Lite.
+		 */
+		nrf_cracen_int_enable(NRF_CRACEN, NRF_CRACEN_INT_PKE_IKG_MASK);
+	}
 
 	/* Wait until initialized. */
 	while (ba414ep_is_busy(req.req) || ik_is_busy(req.req)) {
-		cracen_wait_for_pke_interrupt();
+		if (!IS_ENABLED(CONFIG_CRACEN_HW_VERSION_LITE) &&
+		    IS_ENABLED(CONFIG_CRACEN_USE_INTERRUPTS)) {
+
+			cracen_wait_for_pke_interrupt();
+		}
 	}
 
 	return req;

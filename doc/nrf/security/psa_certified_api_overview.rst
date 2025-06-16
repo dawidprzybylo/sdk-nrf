@@ -80,7 +80,7 @@ PSA Crypto API
 
 This section summarizes some of the features of the PSA Crypto API and how they can be specific to the implementation in the |NCS|.
 For a full explanation, see the `PSA Certified Crypto API`_ official documentation.
-See PSA's `crypto.h`_ file for versioning.
+For definitions of the PSA Crypto API functions, see `crypto.h`_.
 
 Among the advantages of the PSA Crypto API are the following:
 
@@ -91,7 +91,7 @@ Among the advantages of the PSA Crypto API are the following:
   This way, the codebase for cryptography can easily be reused across multiple projects.
 
 The PSA Crypto API is designed to be safe, lowering developers' possibility of introducing vulnerabilities into their end devices.
-For example, the functions in the PSA Crypto API use `Key Identifiers`_ to handle keys, so developers do not have to handle keys manually.
+For example, the functions in the PSA Crypto API use opaque `Key Identifiers`_ to handle keys, so developers do not have to handle keys manually.
 See `Keystore Interface`_ for an overview.
 
 PSA Crypto API in the |NCS|
@@ -107,30 +107,14 @@ Supported operations include the following:
 * Authenticated encryption
 * Signature generation and verification
 
-See :ref:`crypto_samples` for usage examples.
+.. ncs-include:: crypto/drivers.rst
+   :start-after: psa_crypto_driver_table_start
+   :end-before: psa_crypto_driver_table_end
+
 See :ref:`nrf_security_drivers` for a list of supported functionalities.
+For specific cryptographic operations, the PSA Crypto API uses :ref:`the library configured <nrf_security_drivers>` for the given operation.
 
-The Crypto API uses different libraries depending on hardware capabilities and user configuration:
-
-* cc3xx libraries - These provide support for the `CryptoCell 310 <nRF9160 CRYPTOCELL - Arm TrustZone CryptoCell 310_>`_ and `CryptoCell 312 <nRF5340 CRYPTOCELL — Arm TrustZone CryptoCell 312_>`_ hardware peripherals.
-* nrf_oberon - :ref:`nrf_oberon <nrfxlib:nrf_oberon_readme>` is an optimized software library for cryptographic algorithms created by Oberon Microsystems and licensed to Nordic Semiconductor for redistribution.
-* CRACEN - Crypto Accelerator Engine (CRACEN) is a security subsystem developed by Nordic Semiconductor that provides hardware acceleration for cryptographic operations for nRF54L Series devices.
-  For more information about it, see :ref:`ug_nrf54l_crypto_kmu_cracen_peripherals` on the :ref:`ug_nrf54l_cryptography` page.
-
-See :ref:`nrfxlib:crypto` for more information on these libraries.
-
-For specific cryptographic operations, the PSA Crypto API uses the library :ref:`configured <nrf_security_drivers>` for them.
-If multiple libraries have been enabled, cc3xx is prioritized, given that the CryptoCell supports the cryptographic operation.
-
-The following figure illustrates the library selection:
-
-.. figure:: images/psa_certified_api_lib_selection.svg
-   :alt: PSA Crypto API library selection
-   :align: center
-
-   PSA Crypto API library selection
-
-Keys from the PSA Crypto API are typically stored in the Internal Trusted Storage (ITS, one of :ref:`ug_tfm_architecture_rot_services_platform`) or the Key Management Unit (KMU, a hardware peripheral that belongs to :ref:`ug_tfm_architecture_rots`).
+See :ref:`crypto_samples` for usage examples.
 
 .. _ug_psa_certified_api_overview_attestation:
 

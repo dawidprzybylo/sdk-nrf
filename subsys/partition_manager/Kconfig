@@ -32,25 +32,6 @@ config SRAM_BASE_ADDRESS
 	hex
 	depends on !PARTITION_MANAGER_ENABLED
 
-# Workaround for the hardware model v1 which is not aware of the new
-# TrustZone definitions. Since nRF54L15 is not supported with the
-# hardware model v1, the values are set to the SPU values
-# since both nRF53 and nRF9X series are using the SPU for configuring
-# secure/non-secure regions.
-# TODO: Remove this when support for hardware model v1 is removed.
-# Tracked by NCSDK-28541
-if "$(HWM_SCHEME)" = "v1"
-config NRF_TRUSTZONE_FLASH_REGION_SIZE
-	hex
-	default 0x0 if !BUILD_WITH_TFM
-	default NRF_SPU_FLASH_REGION_SIZE if BUILD_WITH_TFM
-
-config NRF_TRUSTZONE_RAM_REGION_SIZE
-	hex
-	default 0x0 if !BUILD_WITH_TFM
-	default NRF_SPU_RAM_REGION_SIZE if BUILD_WITH_TFM
-endif
-
 menu "Zephyr subsystem configurations"
 
 DT_CHOSEN_Z_IPC_SHM := zephyr,ipc_shm
@@ -72,7 +53,7 @@ rsource "Kconfig.template.partition_region"
 endif
 
 
-if SETTINGS_FCB || SETTINGS_NVS || SETTINGS_ZMS
+if SETTINGS_FCB || SETTINGS_NVS || SETTINGS_ZMS || SETTINGS_ZMS_LEGACY
 partition=SETTINGS_STORAGE
 partition-size=0x2000
 rsource "Kconfig.template.partition_config"
@@ -94,7 +75,7 @@ rsource "Kconfig.template.partition_config"
 rsource "Kconfig.template.partition_region"
 endif
 
-if ZMS && !SETTINGS_ZMS
+if ZMS && !(SETTINGS_ZMS || SETTINGS_ZMS_LEGACY)
 partition=ZMS_STORAGE
 partition-size=0x6000
 rsource "Kconfig.template.partition_config"
@@ -130,10 +111,12 @@ endif
 
 config PM_PARTITION_SIZE_VPR_LAUNCHER
 	hex
-	depends on SOC_NRF54L15_CPUFLPR || SOC_NRF54L09_ENGA_CPUFLPR || SOC_NRF54L20_ENGA_CPUFLPR || SOC_NRF7120_ENGA_CPUFLPR
+	depends on SOC_NRF54L15_CPUFLPR || SOC_NRF54L09_ENGA_CPUFLPR || SOC_NRF54LV10A_ENGA_CPUFLPR || SOC_NRF54L20_ENGA_CPUFLPR || SOC_NRF54LM20A_ENGA_CPUFLPR || SOC_NRF7120_ENGA_CPUFLPR
 	default $(dt_node_reg_addr_hex,/soc/rram-controller@5004b000/rram@165000) if SOC_NRF54L15_CPUFLPR
 	default $(dt_node_reg_addr_hex,/soc/rram-controller@5004e000/rram@1ed000) if SOC_NRF54L20_ENGA_CPUFLPR
+	default $(dt_node_reg_addr_hex,/soc/rram-controller@5004e000/rram@1e5000) if SOC_NRF54LM20A_ENGA_CPUFLPR
 	default $(dt_node_reg_addr_hex,/soc/rram-controller@5004e000/rram@ee000) if SOC_NRF54L09_ENGA_CPUFLPR
+	default $(dt_node_reg_addr_hex,/soc/rram-controller@5004e000/rram@ed000) if SOC_NRF54LV10A_ENGA_CPUFLPR
 	default $(dt_node_reg_addr_hex,/soc/mram@3e1000) if SOC_NRF7120_ENGA_CPUFLPR
 	help
 	  Memory set aside for the vpr_launcher partition.
@@ -212,15 +195,15 @@ config PM_OVERRIDE_EXTERNAL_DRIVER_CHECK
 config PM_SRAM_BASE
 	hex
 	default $(dt_node_reg_addr_hex,/soc/memory@21000000) if SOC_NRF5340_CPUNET
-	default 0x20000000 if SOC_NRF54L15_CPUFLPR || SOC_NRF54L09_ENGA_CPUFLPR || SOC_NRF54L20_ENGA_CPUFLPR || SOC_NRF7120_ENGA_CPUFLPR
+	default 0x20000000 if SOC_NRF54L15_CPUFLPR || SOC_NRF54L09_ENGA_CPUFLPR || SOC_NRF54LV10A_ENGA_CPUFLPR || SOC_NRF54L20_ENGA_CPUFLPR || SOC_NRF54LM20A_ENGA_CPUFLPR || SOC_NRF7120_ENGA_CPUFLPR
 	default $(dt_node_reg_addr_hex,/soc/memory@20000000)
 
 config PM_SRAM_SIZE
 	hex
 	default $(dt_node_reg_size_hex,/soc/memory@21000000) if SOC_NRF5340_CPUNET
-	default 0x2fc00 if SOC_NRF54L09_ENGA_CPUFLPR  # Because the cpuapp_rram DT node is deleted in nrf54l09_enga_cpuflpr.dtsi
+	default 0x2fc00 if SOC_NRF54L09_ENGA_CPUFLPR  || SOC_NRF54LV10A_ENGA_CPUFLPR # Because the cpuapp_rram DT node is deleted in nrf54l09_enga_cpuflpr.dtsi
 	default 0x40000 if SOC_NRF54L15_CPUFLPR  # Because the cpuapp_rram DT node is deleted in nrf54l15_cpuflpr.dtsi
-	default 0x7fc00 if SOC_NRF54L20_ENGA_CPUFLPR  # Because the cpuapp_rram DT node is deleted in nrf54l20_enga_cpuflpr.dtsi
+	default 0x7fc00 if SOC_NRF54L20_ENGA_CPUFLPR || SOC_NRF54LM20A_ENGA_CPUFLPR # Because the cpuapp_rram DT node is deleted in nrf54l20_enga_cpuflpr.dtsi
 	default 0x40000 if SOC_NRF7120_ENGA_CPUFLPR  # Because the cpuapp_mram DT node is deleted in nrf7120_enga_cpuflpr.dtsi
 	default $(dt_node_reg_size_hex,/soc/memory@20000000)
 

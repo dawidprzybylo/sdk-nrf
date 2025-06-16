@@ -9,6 +9,7 @@
       - "!.github/**/*"
       - "!.vscode/**/*"
       - "!doc/**/*"
+      - "!scripts/docker/**/*"
       - "!test-manifests/**/*"
       - "!CODEOWNERS"
       - "!LICENSE"
@@ -125,6 +126,7 @@
   - "include/modem/pdn.h"
   - "include/modem/at_params.h"
   - "include/modem/modem_key_mgmt.h"
+  - "subsys/dfu/dfu_target/**/*"
 
 "CI-dfu-test":
   - "include/bl*"
@@ -214,6 +216,7 @@
       - "!include/bluetooth/mesh/**/*"
   - "subsys/nrf_rpc/**/*"
   - "subsys/mpsl/**/*"
+  - "subsys/nrf_security/**/*"
   - "drivers/mpsl/**/*"
 
 "CI-ble-samples-test":
@@ -379,6 +382,8 @@
   - "drivers/wifi/**/*"
   - "modules/hostap/**/*"
   - "modules/lib/hostap/**/*"
+  - "subsys/net/lib/nrf70_fw_ext/**/*"
+  - "subsys/net/lib/hostap_crypto/**/*"
   - "subsys/mpsl/**/*"
   - "subsys/ieee802154/**/*"
   - "subsys/bootloader/**/*"
@@ -523,6 +528,8 @@
   - "samples/wifi/**/*"
   - "modules/hostap/**/*"
   - "modules/lib/hostap/**/*"
+  - "subsys/net/lib/nrf70_fw_ext/**/*"
+  - "subsys/net/lib/hostap_crypto/**/*"
 
 "CI-cloud-test":
   - "include/caf/**/*"
@@ -588,9 +595,9 @@
   - "tests/subsys/suit/**/*"
 
 "CI-test-low-level":
-  - "applications/sdp/**/*"
-  - "boards/nordic/nrf54lm20apdk/**/*"
-  - "boards/nordic/nrf54lv10apdk/**/*"
+  - "applications/hpf/**/*"
+  - "boards/nordic/nrf54lm20pdk/**/*"
+  - "boards/nordic/nrf54lv10dk/**/*"
   - "drivers/gpio/**/*"
   - "dts/bindings/gpio/**/*"
   - "include/drivers/gpio/**/*"
@@ -606,7 +613,7 @@
   - "samples/peripheral/lpuart/**/*"
   - "samples/zephyr/sensor/qdec/**/*"
   - "samples/zephyr/subsys/settings/**/*"
-  - "snippets/sdp/**/*"
+  - "snippets/hpf/**/*"
   - "snippets/nrf54l09-switch-uart/**/*"
   - "soc/nordic/nrf54l/**/*"
   - "tests/benchmarks/multicore/idle/**/*"
@@ -617,6 +624,7 @@
   - "tests/drivers/sensor/**/*"
   - "tests/drivers/spi/**/*"
   - "tests/drivers/uart/**/*"
+  - "tests/drivers/i2c/**/*"
   - "tests/subsys/event_manager_proxy/**/*"
   - "tests/zephyr/boards/nrf/**/*"
   - "tests/zephyr/drivers/adc/**/*"
@@ -632,7 +640,12 @@
 "CI-ps-test":
   - "samples/nrf_rpc/protocols_serialization/**/*"
   - "subsys/net/openthread/rpc/**/*"
-  - "subsys/nrf_rpc/**/*"
+  - "subsys/bluetooth/rpc/**/*"
+  - "subsys/logging/**/*"
+  - "subsys/mpsl/cx/software/**/*"
+  - any:
+      - "subsys/nrf_rpc/**/*"
+      - "!subsys/nrf_rpc/nrf_rpc_ipc.c"
 
 "CI-secdom-test":
   - "samples/bluetooth/multiple_adv_sets/**/*"

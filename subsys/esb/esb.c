@@ -503,8 +503,12 @@ static void esb_fem_for_tx_ack(void)
 
 static void esb_fem_reset(void)
 {
+#if NRF_TIMER_HAS_SHUTDOWN
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+#else
 	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
 	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
+#endif
 
 	mpsl_fem_lna_configuration_clear();
 	mpsl_fem_pa_configuration_clear();
@@ -517,8 +521,12 @@ static void esb_fem_reset(void)
 
 static void esb_fem_lna_reset(void)
 {
+#if NRF_TIMER_HAS_SHUTDOWN
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+#else
 	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
 	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
+#endif
 
 	esb_ppi_for_fem_clear();
 
@@ -530,8 +538,12 @@ static void esb_fem_pa_reset(void)
 {
 	mpsl_fem_pa_configuration_clear();
 
+#if NRF_TIMER_HAS_SHUTDOWN
+	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+#else
 	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
 	nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
+#endif
 
 	esb_ppi_for_fem_clear();
 
@@ -634,11 +646,11 @@ static void update_rf_payload_format_esb_dpl(uint32_t payload_length)
 	}
 #endif /* defined(RADIO_MODE_MODE_Ble_2Mbit) */
 
-#if defined(RADIO_MODE_MODE_Nrf_4Mbit0_5) || defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6)
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6)
 	if (esb_cfg.bitrate == ESB_BITRATE_4MBPS) {
 		packet_config.plen = NRF_RADIO_PREAMBLE_LENGTH_16BIT;
 	}
-#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit0_5) || defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6) */
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6) */
 
 #endif /* defined(RADIO_PCNF0_PLEN_Msk) */
 
@@ -884,11 +896,11 @@ static bool update_radio_bitrate(void)
 
 	switch (esb_cfg.bitrate) {
 
-#if defined(RADIO_MODE_MODE_Nrf_4Mbit0_5) || defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6)
+#if defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6)
 	case ESB_BITRATE_4MBPS:
 		wait_for_ack_timeout_us = RX_ACK_TIMEOUT_US_4MBPS;
 		break;
-#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit0_5) || define(RADIO_MODE_MODE_Nrf_4Mbit_0BT6) */
+#endif /* defined(RADIO_MODE_MODE_Nrf_4Mbit_0BT6) */
 
 	case ESB_BITRATE_2MBPS:
 
@@ -1398,8 +1410,12 @@ static void on_radio_disabled_tx_wait_for_ack(void)
 		}
 	} else {
 		if (retransmits_remaining-- == 0) {
+#if NRF_TIMER_HAS_SHUTDOWN
+			nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_SHUTDOWN);
+#else
 			nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_STOP);
 			nrf_timer_task_trigger(esb_timer.p_reg, NRF_TIMER_TASK_CLEAR);
+#endif
 
 			/* All retransmits are expended, and the TX operation is
 			 * suspended

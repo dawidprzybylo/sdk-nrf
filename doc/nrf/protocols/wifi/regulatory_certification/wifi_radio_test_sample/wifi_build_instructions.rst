@@ -12,17 +12,21 @@ This section outlines example instructions to build the Wi-Fi® radio test sampl
 Stand-alone Wi-Fi Radio test
 ****************************
 
-For information on building the stand-alone Wi-Fi Radio test, see :ref:`Wi-Fi Radio test sample building and running <wifi_radio_sample_building_and_running>`.
+For information on building the stand-alone Wi-Fi Radio test, see either the :ref:`wifi_radio_test` sample or the :ref:`wifi_radio_test_sd` sample.
 
 Combined build for Radio test and Wi-Fi Radio test
 **************************************************
 
 The combined build configuration builds the binary files for the Wi-Fi Radio test that resides in the application core and the Radio test (short-range) that resides in the network core.
-In the :file:`<ncs_repo>/nrf/samples/wifi/radio_test/multi_domain/prj.conf` file, set :kconfig:option:`CONFIG_SUPPORT_NETCORE_PERIPHERAL_RADIO_TEST` = ``y``.
+In the :file:`<ncs_repo>/nrf/samples/wifi/radio_test/multi_domain/prj.conf` file, set :kconfig:option:`CONFIG_NRF70_SR_COEX` = ``y``, :kconfig:option:`CONFIG_NRF70_SR_COEX_RF_SWITCH` = ``y``, and :kconfig:option:`CONFIG_SUPPORT_NETCORE_PERIPHERAL_RADIO_TEST` = ``y`` Kconfig options.
 
 .. code-block:: shell
 
    $ west build -p -b nrf7002dk/nrf5340/cpuapp (DK build)
+
+.. note::
+
+   Set ``sr_ant_switch_ctrl`` subcommand to ``1`` on the Wi-Fi Radio test UART port to switch the BLE RF signal to the BLE U.FL socket.
 
 The following HEX files are generated:
 

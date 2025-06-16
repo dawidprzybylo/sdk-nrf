@@ -16,6 +16,7 @@ jobs:
       with:
         git-fetch-depth: 0
         git-ref: ${{ github.event.pull_request.head.sha }}
+        rebase: true
 
     - name: cache-pip
       uses: actions/cache@2f8e54208210a422b2efd51efaa6bd6d7ca8920f # v3
@@ -38,14 +39,9 @@ jobs:
         BASE_REF: ${{ github.base_ref }}
       working-directory: ncs/nrf
       run: |
-        git remote -v
         # Ensure there's no merge commits in the PR
         [[ "$(git rev-list --merges --count origin/${BASE_REF}..)" == "0" ]] || \
         (echo "::error ::Merge commits not allowed, rebase instead";false)
-
-        git rebase origin/${BASE_REF}
-        # debug
-        git log  --pretty=oneline | head -n 10
 
     - name: Run CODEOWNERS test
       id: codeowners
@@ -70,7 +66,9 @@ jobs:
         git log --pretty=oneline | head -n 10
         # For now we run KconfigBasic, but we should transition to Kconfig
         $ZEPHYR_BASE/scripts/ci/check_compliance.py --annotate -e Kconfig \
-        -e KconfigBasicNoModules -e ClangFormat -e Ruff -c origin/${BASE_REF}..
+        -e KconfigBasicNoModules -e ClangFormat -e Ruff \
+        -e SysbuildKconfig -e SysbuildKconfigBasic -e SysbuildKconfigBasicNoModules \
+        -c origin/${BASE_REF}..
 
     - name: upload-results
       uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4
@@ -110,7 +108,7 @@ jobs:
     - name: Check added or updated links
       working-directory: ncs/nrf
       run: |
-        RE=".. _\`(.*)\`: (.*)"
+        RE='.. _`(.*)`: (.*)'
         LINKS=$(git diff --unified=0 "${{ github.event.pull_request.base.sha }}..HEAD" -- "doc/nrf/links.txt" | \
                 grep "^+" || true | \
                 grep -Ev "^(---|\+\+\+)" || true)
@@ -121,13 +119,18 @@ jobs:
             URL=${BASH_REMATCH[2]}
 
             echo -n "Checking URL for '$NAME' ($URL)... "
-            status=$(curl --write-out "%{http_code}" --output /dev/null --silent --head "$URL" || true)
+            if [[ "$URL" == *"files.nordicsemi.com"* ]]; then
+              # files.nordicsemi.com server does not allow downloading only headers
+              status=$(curl --write-out "%{http_code}" --output /dev/null --silent "$URL" || true)
+            else
+              status=$(curl --write-out "%{http_code}" --output /dev/null --silent --head "$URL" || true)
+            fi
 
             if [[ "$status" -ne 200 ]]; then
               echo "FAIL (HTTP code: ${status})"
-                exit 1
-              else
-                echo "OK"
-              fi
+              exit 1
+            else
+              echo "OK"
+            fi
           fi
         done <<< "$LINKS"

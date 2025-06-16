@@ -71,7 +71,9 @@ static bool command_generates_command_complete_event(uint16_t hci_opcode)
 	case SDC_HCI_OPCODE_CMD_LE_CS_CREATE_CONFIG:
 	case SDC_HCI_OPCODE_CMD_LE_CS_REMOVE_CONFIG:
 	case SDC_HCI_OPCODE_CMD_LE_CS_PROCEDURE_ENABLE:
+#if defined(CONFIG_BT_CTLR_CHANNEL_SOUNDING_TEST)
 	case SDC_HCI_OPCODE_CMD_LE_CS_TEST_END:
+#endif /* CONFIG_BT_CTLR_CHANNEL_SOUNDING_TEST */
 #endif /* CONFIG_BT_CTLR_CHANNEL_SOUNDING */
 		return false;
 	default:
@@ -631,8 +633,10 @@ void hci_internal_supported_commands(sdc_hci_ip_supported_commands_t *cmds)
 	cmds->hci_le_cs_read_local_supported_capabilities = 1;
 	cmds->hci_le_cs_read_remote_supported_capabilities = 1;
 	cmds->hci_le_cs_write_cached_remote_supported_capabilities = 1;
+#if defined(CONFIG_BT_CTLR_CHANNEL_SOUNDING_TEST)
 	cmds->hci_le_cs_test = 1;
 	cmds->hci_le_cs_test_end = 1;
+#endif /* CONFIG_BT_CTLR_CHANNEL_SOUNDING_TEST */
 	cmds->hci_le_cs_security_enable = 1;
 	cmds->hci_le_cs_set_default_settings = 1;
 	cmds->hci_le_cs_set_channel_classification = 1;
@@ -773,6 +777,10 @@ void hci_internal_le_supported_features(
 	features->params.channel_sounding = 1;
 	features->params.channel_sounding_tone_quality_indication = 1;
 #endif /* CONFIG_BT_CTLR_CHANNEL_SOUNDING */
+
+#if defined(CONFIG_BT_CTLR_SDC_LE_POWER_CLASS_1)
+	features->params.le_Power_class_1 = 1;
+#endif /* CONFIG_BT_CTLR_SDC_LE_POWER_CLASS_1 */
 }
 
 static void le_read_supported_states(uint8_t *buf)
@@ -1564,10 +1572,12 @@ static uint8_t le_controller_cmd_put(uint8_t const * const cmd,
 							(void *)event_out_params);
 	case SDC_HCI_OPCODE_CMD_LE_CS_PROCEDURE_ENABLE:
 		return sdc_hci_cmd_le_cs_procedure_enable((void *)cmd_params);
+#if defined(CONFIG_BT_CTLR_CHANNEL_SOUNDING_TEST)
 	case SDC_HCI_OPCODE_CMD_LE_CS_TEST:
 		return sdc_hci_cmd_le_cs_test((void *)cmd_params);
 	case SDC_HCI_OPCODE_CMD_LE_CS_TEST_END:
 		return sdc_hci_cmd_le_cs_test_end();
+#endif /* CONFIG_BT_CTLR_CHANNEL_SOUNDING_TEST */
 #endif /* CONFIG_BT_CTLR_CHANNEL_SOUNDING */
 
 	default:
@@ -1712,6 +1722,11 @@ static uint8_t vs_cmd_put(uint8_t const *const cmd, uint8_t *const raw_event_out
 	case SDC_HCI_OPCODE_CMD_VS_CONN_ANCHOR_POINT_UPDATE_EVENT_REPORT_ENABLE:
 		return sdc_hci_cmd_vs_conn_anchor_point_update_event_report_enable(
 		(sdc_hci_cmd_vs_conn_anchor_point_update_event_report_enable_t const *)cmd_params);
+#endif
+#if defined(CONFIG_BT_PER_ADV)
+	case SDC_HCI_OPCODE_CMD_VS_ENABLE_PERIODIC_ADV_EVENT_COUNTER_REPORTS:
+		return sdc_hci_cmd_vs_enable_periodic_adv_event_counter_reports(
+		(sdc_hci_cmd_vs_enable_periodic_adv_event_counter_reports_t const *)cmd_params);
 #endif
 	default:
 		return BT_HCI_ERR_UNKNOWN_CMD;

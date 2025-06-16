@@ -32,7 +32,8 @@ The library is enabled and configured entirely using the Kconfig system.
 Configure the following Kconfig options to enable this library:
 
 * :kconfig:option:`CONFIG_MODEM_SLM` - Enables the Modem SLM library.
-* :kconfig:option:`CONFIG_MODEM_SLM_DMA_MAXLEN` - Configures UART RX EasyDMA buffer size, which is configured to 1024 bytes by default.
+* :kconfig:option:`CONFIG_MODEM_SLM_AT_CMD_RESP_MAX_SIZE` - Configures the size of the AT command response buffer.
+  The default size is 2100 bytes, which is aligned with SLM.
 * :kconfig:option:`CONFIG_MODEM_SLM_POWER_PIN` - Configures the mandatory power pin GPIO, which is not configured by default.
 * :kconfig:option:`CONFIG_MODEM_SLM_POWER_PIN_TIME` - Sets the toggle time value in milliseconds for power pin GPIO, by default 100 ms.
 
@@ -40,6 +41,12 @@ Optionally configure the following Kconfig options based on need:
 
 * :kconfig:option:`CONFIG_MODEM_SLM_SHELL` - Enables the shell function in the Modem SLM library, which is not enabled by default.
 * :kconfig:option:`CONFIG_MODEM_SLM_INDICATE_PIN` - Configures the optional indicator GPIO, which is not configured by default.
+* :kconfig:option:`CONFIG_MODEM_SLM_UART_RX_BUF_COUNT` - Configures the number of RX buffers for the UART device.
+  The default value is 3.
+* :kconfig:option:`CONFIG_MODEM_SLM_UART_RX_BUF_SIZE` - Configures the size of the RX buffer for the UART device.
+  The default value is 256 bytes.
+* :kconfig:option:`CONFIG_MODEM_SLM_UART_TX_BUF_SIZE` - Configures the size of the TX buffer for the UART device.
+  The default value is 256 bytes.
 
 The application must use Zephyr ``chosen`` nodes in devicetree to select UART device.
 Additionally, GPIO can also be selected.
@@ -66,7 +73,10 @@ The library sends the termination character automatically after an AT command.
 Shell usage
 ***********
 
-To send AT commands in shell, use the following syntax:
+SLM
+---
+
+Send AT commands for SLM in shell:
 
   .. code-block:: console
 
@@ -83,6 +93,27 @@ To send AT commands in shell, use the following syntax:
 
 SLM accepts AT command characters in upper, lower, or mixed case.
 
+Host
+----
+
+Use ``slmsh`` command to see commands for the Modem SLM library functions.
+
+Request toggling of the power pin from the Modem SLM library to put the SLM device to sleep and then wake it up:
+
+  .. code-block:: console
+
+     uart:~$ slmsh powerpin
+     [00:00:17.973,510] <inf> mdm_slm: Enable power pin
+     [00:00:18.078,887] <inf> mdm_slm: Disable power pin
+
+     uart:~$ slmsh powerpin
+     [00:00:33.038,604] <inf> mdm_slm: Enable power pin
+     [00:00:33.143,951] <inf> mdm_slm: Disable power pin
+     Ready
+
+     [00:00:34.538,513] <inf> app: Data received (len=7): Ready
+     uart:~$
+
 SLM Monitor usage
 *****************
 
@@ -91,8 +122,6 @@ The SLM Monitor has similar functions to the :ref:`at_monitor_readme` library, e
   .. code-block:: console
 
      SLM_MONITOR(network, "\r\n+CEREG:", cereg_mon);
-
-     SLM_MONITOR(download, "\r\n#XDFUGET: 0,", download_mon, MON_PAUSED);
 
 API documentation
 *****************

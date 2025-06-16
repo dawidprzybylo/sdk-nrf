@@ -21,6 +21,7 @@
 #include "macros_common.h"
 #include "zbus_common.h"
 #include "channel_assignment.h"
+#include "audio_defines.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(broadcast_sink, CONFIG_BROADCAST_SINK_LOG_LEVEL);
@@ -329,21 +330,23 @@ static void stream_stopped_cb(struct bt_bap_stream *stream, uint8_t reason)
 }
 
 static void stream_recv_cb(struct bt_bap_stream *stream, const struct bt_iso_recv_info *info,
-			   struct net_buf *buf)
+			   struct net_buf *audio_frame)
 {
-	bool bad_frame = false;
+	int ret;
+	struct audio_metadata meta;
 
 	if (receive_cb == NULL) {
 		LOG_ERR("The RX callback has not been set");
 		return;
 	}
 
-	if (!(info->flags & BT_ISO_FLAGS_VALID)) {
-		bad_frame = true;
+	ret = le_audio_metadata_populate(&meta, stream, info, audio_frame);
+	if (ret) {
+		LOG_ERR("Failed to populate meta data: %d", ret);
+		return;
 	}
 
-	receive_cb(buf->data, buf->len, bad_frame, info->ts, active_stream_index,
-		   active_stream.codec->octets_per_sdu);
+	receive_cb(audio_frame, &meta, active_stream_index);
 }
 
 static struct bt_bap_stream_ops stream_ops = {
@@ -424,6 +427,9 @@ static bool base_subgroup_cb(const struct bt_bap_base_subgroup *subgroup, void *
 		sync_stream_cnt = bis_num;
 		for (int i = 0; i < bis_num; i++) {
 			get_codec_info(&codec_cfg, &audio_codec_info[i]);
+			audio_codec_info[i].id = codec_id.id;
+			audio_codec_info[i].cid = codec_id.cid;
+			audio_codec_info[i].vid = codec_id.vid;
 		}
 
 		ret = bt_bap_base_subgroup_foreach_bis(subgroup, base_subgroup_bis_cb, NULL);
@@ -542,7 +548,7 @@ static void syncable_cb(struct bt_bap_broadcast_sink *sink, const struct bt_iso_
 		 */
 		if (!broadcast_code_received && biginfo->encryption == true &&
 		    sink->broadcast_id != prev_broadcast_id) {
-			LOG_WRN("Stream is encrypted, but haven not received broadcast code");
+			LOG_WRN("Stream is encrypted, but have not received broadcast code");
 			return;
 		}
 
@@ -762,6 +768,10 @@ int broadcast_sink_enable(le_audio_receive_cb recv_cb)
 	int ret;
 	static bool initialized;
 	enum audio_channel channel;
+	const struct bt_pacs_register_param pacs_param = {
+		.snk_pac = true,
+		.snk_loc = true,
+	};
 
 	if (initialized) {
 		LOG_WRN("Already initialized");
@@ -776,6 +786,12 @@ int broadcast_sink_enable(le_audio_receive_cb recv_cb)
 	receive_cb = recv_cb;
 
 	channel_assignment_get(&channel);
+
+	ret = bt_pacs_register(&pacs_param);
+	if (ret) {
+		LOG_ERR("Could not register PACS (err %d)\n", ret);
+		return ret;
+	}
 
 	if (channel == AUDIO_CH_L) {
 		ret = bt_pacs_set_location(BT_AUDIO_DIR_SINK, BT_AUDIO_LOCATION_FRONT_LEFT);

@@ -493,7 +493,7 @@ LOOKUP_CACHE_SIZE      = 9
 # DOT_NUM_THREADS setting.
 # Minimum value: 0, maximum value: 32, default value: 1.
 
-NUM_PROC_THREADS       = 1
+NUM_PROC_THREADS       = 0
 
 # If the TIMESTAMP tag is set different from NO then each generated page will
 # contain the date or date and time when the page was generated. Setting this to
@@ -959,7 +959,10 @@ WARN_LOGFILE           =
 INPUT                  = @DOCSET_SOURCE_BASE@/applications \
                          @DOCSET_SOURCE_BASE@/lib \
                          @DOCSET_SOURCE_BASE@/include \
-                         @DOCSET_SOURCE_BASE@/subsys/nrf_security/include
+                         @DOCSET_SOURCE_BASE@/subsys/nrf_security/include/psa/crypto_driver_contexts_composites.h \
+                         @DOCSET_SOURCE_BASE@/subsys/nrf_security/include/psa/crypto_driver_contexts_key_derivation.h \
+                         @DOCSET_SOURCE_BASE@/subsys/nrf_security/include/psa/crypto_driver_contexts_primitives.h \
+                         @DOCSET_SOURCE_BASE@/subsys/nrf_security/include/nrf_security_api_structure.h
 
 # This tag can be used to specify the character encoding of the source files
 # that Doxygen parses. Internally Doxygen uses the UTF-8 encoding. Doxygen uses

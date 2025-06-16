@@ -430,24 +430,6 @@
           "code": 40,
           "mfgCode": null,
           "define": "BASIC_INFORMATION_CLUSTER",
-          "side": "client",
-          "enabled": 1,
-          "commands": [
-            {
-              "name": "GenerateRandom",
-              "code": 0,
-              "mfgCode": null,
-              "source": "client",
-              "isIncoming": 0,
-              "isEnabled": 1
-            }
-          ]
-        },
-        {
-          "name": "Basic Information",
-          "code": 40,
-          "mfgCode": null,
-          "define": "BASIC_INFORMATION_CLUSTER",
           "side": "server",
           "enabled": 1,
           "commands": [
@@ -2684,24 +2666,6 @@
           "code": 4294048769,
           "mfgCode": null,
           "define": "NORDIC_DEV_KIT_CLUSTER",
-          "side": "client",
-          "enabled": 1,
-          "commands": [
-            {
-              "name": "SetLED",
-              "code": 4293984256,
-              "mfgCode": null,
-              "source": "client",
-              "isIncoming": 0,
-              "isEnabled": 1
-            }
-          ]
-        },
-        {
-          "name": "NordicDevKit",
-          "code": 4294048769,
-          "mfgCode": null,
-          "define": "NORDIC_DEV_KIT_CLUSTER",
           "side": "server",
           "enabled": 1,
           "commands": [
@@ -2818,7 +2782,7 @@
               "side": "server",
               "type": "char_string",
               "included": 1,
-              "storageOption": "RAM",
+              "storageOption": "NVM",
               "singleton": 0,
               "bounded": 0,
               "defaultValue": "Nordic Development Kit",
@@ -2834,7 +2798,7 @@
               "side": "server",
               "type": "boolean",
               "included": 1,
-              "storageOption": "RAM",
+              "storageOption": "NVM",
               "singleton": 0,
               "bounded": 0,
               "defaultValue": "false",

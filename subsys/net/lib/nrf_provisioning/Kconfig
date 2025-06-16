@@ -6,7 +6,6 @@
 
 menuconfig NRF_PROVISIONING
 	bool "nRF Provisioning"
-	select EXPERIMENTAL
 	depends on NRF_MODEM_LIB
 	depends on SETTINGS
 	imply FCB
@@ -80,6 +79,21 @@ config NRF_PROVISIONING_PRINT_ATTESTATION_TOKEN
 	  Unauthorized errors occur when the device is not yet claimed on
 	  nRF Cloud. Display the attestation token
 	  needed for claiming the device.
+
+config NRF_PROVISIONING_STACK_SIZE
+	int "nRF Provisioning Stack size"
+	default 4096 if NRF_PROVISIONING_LOG_LEVEL_DBG
+	default 2048
+	help
+	  Stack size for the nRF Provisioning thread.
+
+config NRF_PROVISIONING_INITIAL_BACKOFF
+	int "Initial backoff time in seconds"
+	default 60
+	help
+	  Initial time for exponential backoff in seconds. The time is doubled
+	  after each failed (busy or timeout) attempt to connect to the server.
+	  The maximum time is 86400 seconds (24 hours).
 
 rsource "Kconfig.nrf_provisioning_http"
 

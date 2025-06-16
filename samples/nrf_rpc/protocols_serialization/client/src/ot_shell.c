@@ -5,6 +5,7 @@
  */
 
 #include "ot_shell.h"
+#include <net/ot_rpc.h>
 
 #include <zephyr/shell/shell.h>
 #include <zephyr/net/net_ip.h>
@@ -103,15 +104,15 @@ static void ot_cli_lazy_init(const struct shell *sh)
 typedef otError(*ot_cli_command_handler_t)(const struct shell *, size_t argc, char *argv[]);
 
 /*
- * Invokes the OT shell command handler with the provided arguments. Then prints either
- * "Done", if the handler returns no error, or an OpenThread error code that the handler
- * returns.
+ * Executes the local shell command handler with the provided arguments.
+ * Then it prints either "Done", if the handler returns no error, or "Error X", where X is
+ * an OpenThread error code returned by the handler.
  *
  * This is meant to duplicate the behavior of the OpenThread's CLI subsystem, which prints
  * the command result in a similar manner.
  */
-static int ot_cli_command_invoke(ot_cli_command_handler_t handler, const struct shell *sh,
-				 size_t argc, char *argv[])
+static int ot_cli_command_exec(ot_cli_command_handler_t handler, const struct shell *sh,
+			       size_t argc, char *argv[])
 {
 	otError error;
 
@@ -234,7 +235,7 @@ static otError ot_cli_command_discover(const struct shell *sh, size_t argc, char
 
 static int cmd_discover(const struct shell *sh, size_t argc, char *argv[])
 {
-	return ot_cli_command_invoke(ot_cli_command_discover, sh, argc, argv);
+	return ot_cli_command_exec(ot_cli_command_discover, sh, argc, argv);
 }
 
 static otError ot_cli_command_radio(const struct shell *sh, size_t argc, char *argv[])
@@ -251,7 +252,7 @@ static otError ot_cli_command_radio(const struct shell *sh, size_t argc, char *a
 static int cmd_radio(const struct shell *sh, size_t argc, char *argv[])
 {
 	if (argc == 2 && strcmp(argv[1], "time") == 0) {
-		return ot_cli_command_invoke(ot_cli_command_radio, sh, argc, argv);
+		return ot_cli_command_exec(ot_cli_command_radio, sh, argc, argv);
 	}
 
 	return ot_cli_command_send(sh, argc + 1, argv - 1);
@@ -420,22 +421,22 @@ static otError ot_cli_command_thread(const struct shell *sh, size_t argc, char *
 
 static int cmd_ifconfig(const struct shell *sh, size_t argc, char *argv[])
 {
-	return ot_cli_command_invoke(ot_cli_command_ifconfig, sh, argc, argv);
+	return ot_cli_command_exec(ot_cli_command_ifconfig, sh, argc, argv);
 }
 
 static int cmd_ipmaddr(const struct shell *sh, size_t argc, char *argv[])
 {
-	return ot_cli_command_invoke(ot_cli_command_ipmaddr, sh, argc, argv);
+	return ot_cli_command_exec(ot_cli_command_ipmaddr, sh, argc, argv);
 }
 
 static int cmd_mode(const struct shell *sh, size_t argc, char *argv[])
 {
-	return ot_cli_command_invoke(ot_cli_command_mode, sh, argc, argv);
+	return ot_cli_command_exec(ot_cli_command_mode, sh, argc, argv);
 }
 
 static int cmd_pollperiod(const struct shell *sh, size_t argc, char *argv[])
 {
-	return ot_cli_command_invoke(ot_cli_command_pollperiod, sh, argc, argv);
+	return ot_cli_command_exec(ot_cli_command_pollperiod, sh, argc, argv);
 }
 
 static int cmd_state(const struct shell *sh, size_t argc, char *argv[])
@@ -448,12 +449,12 @@ static int cmd_state(const struct shell *sh, size_t argc, char *argv[])
 		return ot_cli_command_send(sh, argc + 1, argv - 1);
 	}
 
-	return ot_cli_command_invoke(ot_cli_command_state, sh, argc, argv);
+	return ot_cli_command_exec(ot_cli_command_state, sh, argc, argv);
 }
 
 static int cmd_thread(const struct shell *sh, size_t argc, char *argv[])
 {
-	return ot_cli_command_invoke(ot_cli_command_thread, sh, argc, argv);
+	return ot_cli_command_exec(ot_cli_command_thread, sh, argc, argv);
 }
 
 static int cmd_test_message(const struct shell *sh, size_t argc, char *argv[])
@@ -497,91 +498,6 @@ exit:
 		otMessageFree(message);
 	}
 
-	return 0;
-}
-
-static void handle_udp_receive(void *context, otMessage *message, const otMessageInfo *message_info)
-{
-	uint16_t length;
-	uint16_t offset;
-	uint16_t read;
-	otError error;
-	otThreadLinkInfo link_info;
-	char buf[128] = {0};
-	const struct shell *sh = context;
-
-	offset = otMessageGetOffset(message);
-	length = otMessageGetLength(message);
-	error = otMessageGetThreadLinkInfo(message, &link_info);
-	read = otMessageRead(message, offset, buf, MIN(length, sizeof(buf)));
-
-	shell_print(sh, "Received UDP message");
-	shell_hexdump(sh, buf, read);
-
-	if (error == OT_ERROR_NONE) {
-		shell_print(sh, "PAN ID: %x", link_info.mPanId);
-		shell_print(sh, "Channel: %u", link_info.mChannel);
-		shell_print(sh, "RSS: %d", link_info.mRss);
-		shell_print(sh, "LQI: %u", link_info.mLqi);
-		shell_print(sh, "Link security: %c", link_info.mLinkSecurity ? 'y' : 'n');
-	}
-}
-
-static int cmd_test_udp_init(const struct shell *sh, size_t argc, char *argv[])
-{
-	otSockAddr listen_sock_addr;
-
-	memset(&udp_socket, 0, sizeof(udp_socket));
-	memset(&listen_sock_addr, 0, sizeof(listen_sock_addr));
-
-	listen_sock_addr.mPort = PORT;
-
-	otUdpOpen(NULL, &udp_socket, handle_udp_receive, (void *)sh);
-	otUdpBind(NULL, &udp_socket, &listen_sock_addr, OT_NETIF_THREAD);
-
-	return 0;
-}
-
-static int cmd_test_udp_send(const struct shell *sh, size_t argc, char *argv[])
-{
-	otError error = OT_ERROR_NONE;
-	otMessage *message = NULL;
-	otMessageInfo message_info;
-	otIp6Address destination_addr;
-
-	memset(&message_info, 0, sizeof(message_info));
-	memset(&destination_addr, 0, sizeof(destination_addr));
-
-	destination_addr.mFields.m8[0] = 0xff;
-	destination_addr.mFields.m8[1] = 0x03;
-	destination_addr.mFields.m8[15] = 0x01;
-	message_info.mPeerAddr = destination_addr;
-	message_info.mPeerPort = PORT;
-
-	message = otUdpNewMessage(NULL, NULL);
-	if (message == NULL) {
-		error = OT_ERROR_NO_BUFS;
-		goto exit;
-	};
-
-	error = otMessageAppend(message, udp_payload, sizeof(udp_payload));
-	if (error != OT_ERROR_NONE) {
-		goto exit;
-	}
-	error = otUdpSend(NULL, &udp_socket, message, &message_info);
-	shell_print(sh, "Udp message send.");
-
-exit:
-	if (error != OT_ERROR_NONE && message != NULL) {
-		otMessageFree(message);
-	}
-	return 0;
-}
-
-static int cmd_test_udp_close(const struct shell *sh, size_t argc, char *argv[])
-{
-	otUdpClose(NULL, &udp_socket);
-	shell_print(sh, "Udp socket closed.");
 	return 0;
 }
 
@@ -874,10 +790,16 @@ static int cmd_test_srp_client_host_info(const struct shell *sh, size_t argc, ch
 
 static int cmd_test_srp_client_host_name(const struct shell *sh, size_t argc, char *argv[])
 {
+	otError error;
+
 	memset(srp_client_host_name, 0, sizeof(srp_client_host_name));
 	strncpy(srp_client_host_name, argv[1], sizeof(srp_client_host_name) - 1);
 
-	otSrpClientSetHostName(NULL, srp_client_host_name);
+	error = otSrpClientSetHostName(NULL, srp_client_host_name);
+	if (error) {
+		shell_error(sh, "otSrpClientSetHostName() error: %u", error);
+		return -ENOEXEC;
+	}
 
 	shell_print(sh, "Name set to: %s", argv[1]);
 
@@ -886,7 +808,12 @@ static int cmd_test_srp_client_host_name(const struct shell *sh, size_t argc, ch
 
 static int cmd_test_srp_client_host_address_auto(const struct shell *sh, size_t argc, char *argv[])
 {
-	otSrpClientEnableAutoHostAddress(NULL);
+	otError error = otSrpClientEnableAutoHostAddress(NULL);
+
+	if (error) {
+		shell_error(sh, "otSrpClientEnableAutoHostAddress() error: %u", error);
+		return -ENOEXEC;
+	}
 
 	return 0;
 }
@@ -896,6 +823,7 @@ static int cmd_test_srp_client_host_remove(const struct shell *sh, size_t argc, 
 	bool remove_key_lease = false;
 	bool send_unreg = false;
 	int err = 0;
+	otError error;
 
 	if (argc > 1) {
 		remove_key_lease = shell_strtobool(argv[1], 0, &err);
@@ -917,7 +845,11 @@ static int cmd_test_srp_client_host_remove(const struct shell *sh, size_t argc, 
 		}
 	}
 
-	otSrpClientRemoveHostAndServices(NULL, remove_key_lease, send_unreg);
+	error = otSrpClientRemoveHostAndServices(NULL, remove_key_lease, send_unreg);
+	if (error) {
+		shell_error(sh, "otSrpClientRemoveHostAndServices() error: %u", error);
+		return -ENOEXEC;
+	}
 
 	return 0;
 }
@@ -999,6 +931,7 @@ static int cmd_test_srp_client_start(const struct shell *sh, size_t argc, char *
 {
 	otSockAddr sockaddr;
 	int err = 0;
+	otError error;
 
 	if (net_addr_pton(AF_INET6, argv[1], (struct in6_addr *)&sockaddr.mAddress)) {
 		shell_error(sh, "Invalid IPv6 address: %s", argv[1]);
@@ -1014,7 +947,11 @@ static int cmd_test_srp_client_start(const struct shell *sh, size_t argc, char *
 		return -EINVAL;
 	}
 
-	otSrpClientStart(NULL, &sockaddr);
+	error = otSrpClientStart(NULL, &sockaddr);
+	if (error) {
+		shell_error(sh, "otSrpClientStart() error: %u", error);
+		return -ENOEXEC;
+	}
 
 	return 0;
 }
@@ -1061,9 +998,25 @@ static int cmd_test_srp_client_ttl(const struct shell *sh, size_t argc, char *ar
 
 static int cmd_test_vendor_data(const struct shell *sh, size_t argc, char *argv[])
 {
-	otThreadSetVendorName(NULL, argv[1]);
-	otThreadSetVendorModel(NULL, argv[2]);
-	otThreadSetVendorSwVersion(NULL, argv[3]);
+	otError error;
+
+	error = otThreadSetVendorName(NULL, argv[1]);
+	if (error) {
+		shell_error(sh, "otThreadSetVendorName() error: %u", error);
+		return -EINVAL;
+	}
+
+	error = otThreadSetVendorModel(NULL, argv[2]);
+	if (error) {
+		shell_error(sh, "otThreadSetVendorModel() error: %u", error);
+		return -EINVAL;
+	}
+
+	error = otThreadSetVendorSwVersion(NULL, argv[3]);
+	if (error) {
+		shell_error(sh, "otThreadSetVendorSwVersion() error: %u", error);
+		return -EINVAL;
+	}
 
 	shell_print(sh, "Vendor name set to: %s", otThreadGetVendorName(NULL));
 	shell_print(sh, "Vendor model set to: %s", otThreadGetVendorModel(NULL));
@@ -1302,6 +1255,7 @@ static int cmd_test_net_diag(const struct shell *sh, size_t argc, char *argv[])
 	uint8_t tlv_types[35];
 	uint8_t count = 0;
 	otIp6Address addr;
+	otError error;
 
 	if (net_addr_pton(AF_INET6, argv[2], addr.mFields.m8)) {
 		shell_error(sh, "Failed to parse IPv6 address: %s", argv[1]);
@@ -1314,12 +1268,19 @@ static int cmd_test_net_diag(const struct shell *sh, size_t argc, char *argv[])
 	}
 
 	if (strcmp(argv[1], "get") == 0) {
-		otThreadSendDiagnosticGet(NULL, &addr, tlv_types, count,
-					  handle_receive_diagnostic_get, (void *)sh);
+		error = otThreadSendDiagnosticGet(NULL, &addr, tlv_types, count,
+						  handle_receive_diagnostic_get, (void *)sh);
+		if (error) {
+			shell_error(sh, "otThreadSendDiagnosticGet() error: %u", error);
+			return -ENOEXEC;
+		}
 
 	} else if (strcmp(argv[1], "reset") == 0) {
-		otThreadSendDiagnosticReset(NULL, &addr, tlv_types, count);
-
+		error = otThreadSendDiagnosticReset(NULL, &addr, tlv_types, count);
+		if (error) {
+			shell_error(sh, "otThreadSendDiagnosticGet() error: %u", error);
+			return -ENOEXEC;
+		}
 	} else {
 		shell_error(sh, "Invalid argument %s", argv[1]);
 		return -EINVAL;
@@ -1407,6 +1368,7 @@ static int cmd_test_mesh_diag(const struct shell *sh, size_t argc, char *argv[])
 		.mDiscoverIp6Addresses = false,
 		.mDiscoverChildTable = false,
 	};
+	otError error;
 
 	if (strcmp(argv[1], "cancel") == 0) {
 		otMeshDiagCancel(NULL);
@@ -1426,7 +1388,12 @@ static int cmd_test_mesh_diag(const struct shell *sh, size_t argc, char *argv[])
 			return -EINVAL;
 		}
 	}
-	otMeshDiagDiscoverTopology(NULL, &config, handle_mesh_diag_discover, (void *)sh);
+
+	error = otMeshDiagDiscoverTopology(NULL, &config, handle_mesh_diag_discover, (void *)sh);
+	if (error) {
+		shell_error(sh, "otMeshDiagDiscoverTopology() error: %u", error);
+		return -ENOEXEC;
+	}
 
 	return 0;
 }
@@ -1802,7 +1769,11 @@ static void dns_service_cb(otError error, const otDnsServiceResponse *response, 
 	uint8_t txtBuffer[CONFIG_OPENTHREAD_RPC_DNS_MAX_TXT_DATA_SIZE];
 	otDnsServiceInfo service_info;
 
-	otDnsServiceResponseGetServiceName(response, label, sizeof(label), name, sizeof(name));
+	if (otDnsServiceResponseGetServiceName(response, label, sizeof(label), name,
+					       sizeof(name))) {
+		shell_error(sh, "otDnsServiceResponseGetServiceName() error");
+		return;
+	}
 
 	if (error == OT_ERROR_NONE) {
 		shell_print(sh, "DNS service resolution response for %s for service %s", label,
@@ -1856,7 +1827,10 @@ static void dns_browse_cb(otError error, const otDnsBrowseResponse *response, vo
 	uint8_t txtBuffer[CONFIG_OPENTHREAD_RPC_DNS_MAX_TXT_DATA_SIZE];
 	otDnsServiceInfo info;
 
-	otDnsBrowseResponseGetServiceName(response, name, sizeof(name));
+	if (otDnsBrowseResponseGetServiceName(response, name, sizeof(name))) {
+		shell_error(sh, "otDnsBrowseResponseGetServiceName() error");
+		return;
+	}
 
 	shell_print(sh, "DNS browse response for: %s", name);
 
@@ -1900,6 +1874,201 @@ static int cmd_dns_client_browse(const struct shell *sh, size_t argc, char *argv
 	return 0;
 }
 
+static otError ot_cli_command_eui64(const struct shell *sh, size_t argc, char *argv[])
+{
+	otExtAddress ext_addr;
+
+	if (argc == 1) {
+		/* Read current EUI64 */
+		otLinkGetFactoryAssignedIeeeEui64(NULL, &ext_addr);
+		shell_print(sh, "%02x%02x%02x%02x%02x%02x%02x%02x", ext_addr.m8[0], ext_addr.m8[1],
+			    ext_addr.m8[2], ext_addr.m8[3], ext_addr.m8[4], ext_addr.m8[5],
+			    ext_addr.m8[6], ext_addr.m8[7]);
+		return OT_ERROR_NONE;
+	}
+
+	/* Set new EUI64 */
+	if (hex2bin(argv[1], strlen(argv[1]), ext_addr.m8, sizeof(ext_addr.m8)) !=
+	    sizeof(ext_addr.m8)) {
+		return OT_ERROR_INVALID_ARGS;
+	}
+
+	return ot_rpc_set_factory_assigned_ieee_eui64(&ext_addr);
+}
+
+static int cmd_eui64(const struct shell *sh, size_t argc, char *argv[])
+{
+	return ot_cli_command_exec(ot_cli_command_eui64, sh, argc, argv);
+}
+
+static void handle_udp_receive(void *context, otMessage *msg, const otMessageInfo *msg_info)
+{
+	uint16_t offset;
+	uint16_t length;
+	char addr_string[NET_IPV6_ADDR_LEN];
+	otThreadLinkInfo link_info;
+	const struct shell *sh = context;
+
+	offset = otMessageGetOffset(msg);
+	length = otMessageGetLength(msg);
+
+	shell_print(sh, "%d bytes from %s %d", length - offset,
+		    net_addr_ntop(AF_INET6, &msg_info->mPeerAddr, addr_string, sizeof(addr_string)),
+		    msg_info->mPeerPort);
+
+	while (offset < length) {
+		uint8_t buf[64];
+		uint16_t read = otMessageRead(msg, offset, buf, sizeof(buf));
+
+		shell_hexdump(sh, buf, read);
+		offset += read;
+	}
+
+	if (otMessageGetThreadLinkInfo(msg, &link_info) == OT_ERROR_NONE) {
+		shell_print(sh, "PanId: %x", link_info.mPanId);
+		shell_print(sh, "Channel: %u", link_info.mChannel);
+		shell_print(sh, "Rss: %d", link_info.mRss);
+		shell_print(sh, "Lqi: %u", link_info.mLqi);
+		shell_print(sh, "LinkSecurity: %c", link_info.mLinkSecurity ? 'y' : 'n');
+	}
+}
+
+static otError cmd_udp_open_impl(const struct shell *sh, size_t argc, char *argv[])
+{
+	if (otUdpIsOpen(NULL, &udp_socket)) {
+		return OT_ERROR_ALREADY;
+	}
+
+	return otUdpOpen(NULL, &udp_socket, handle_udp_receive, (void *)sh);
+}
+
+static int cmd_udp_open(const struct shell *sh, size_t argc, char *argv[])
+{
+	return ot_cli_command_exec(cmd_udp_open_impl, sh, argc, argv);
+}
+
+static otError cmd_udp_bind_impl(const struct shell *sh, size_t argc, char *argv[])
+{
+	otNetifIdentifier netif;
+	otSockAddr sock_addr;
+	int rc = 0;
+
+	if (strcmp(argv[1], "-u") == 0) {
+		netif = OT_NETIF_UNSPECIFIED;
+	} else if (strcmp(argv[1], "-b") == 0) {
+		netif = OT_NETIF_BACKBONE;
+	} else {
+		netif = OT_NETIF_THREAD;
+	}
+
+	if (net_addr_pton(AF_INET6, argv[argc - 2], (struct in6_addr *)&sock_addr.mAddress)) {
+		return OT_ERROR_INVALID_ARGS;
+	}
+
+	sock_addr.mPort = shell_strtoul(argv[argc - 1], 0, &rc);
+
+	if (rc) {
+		return OT_ERROR_INVALID_ARGS;
+	}
+
+	return otUdpBind(NULL, &udp_socket, &sock_addr, netif);
+}
+
+static int cmd_udp_bind(const struct shell *sh, size_t argc, char *argv[])
+{
+	return ot_cli_command_exec(cmd_udp_bind_impl, sh, argc, argv);
+}
+
+static otError cmd_udp_connect_impl(const struct shell *sh, size_t argc, char *argv[])
+{
+	otSockAddr sock_addr;
+	int rc = 0;
+
+	if (net_addr_pton(AF_INET6, argv[1], (struct in6_addr *)&sock_addr.mAddress)) {
+		return OT_ERROR_INVALID_ARGS;
+	}
+
+	sock_addr.mPort = shell_strtoul(argv[2], 0, &rc);
+
+	if (rc) {
+		return OT_ERROR_INVALID_ARGS;
+	}
+
+	return otUdpConnect(NULL, &udp_socket, &sock_addr);
+}
+
+static int cmd_udp_connect(const struct shell *sh, size_t argc, char *argv[])
+{
+	return ot_cli_command_exec(cmd_udp_connect_impl, sh, argc, argv);
+}
+
+static otError cmd_udp_send_impl(const struct shell *sh, size_t argc, char *argv[])
+{
+	otError error;
+	otMessageInfo msg_info;
+	otMessageSettings msg_settings = {
+		.mLinkSecurityEnabled = true,
+		.mPriority = OT_MESSAGE_PRIORITY_NORMAL,
+	};
+	otMessage *msg;
+	int rc = 0;
+
+	if (!otUdpIsOpen(NULL, &udp_socket)) {
+		return OT_ERROR_INVALID_STATE;
+	}
+
+	memset(&msg_info, 0, sizeof(msg_info));
+
+	if (argc >= 4) {
+		if (net_addr_pton(AF_INET6, argv[1], (struct in6_addr *)&msg_info.mPeerAddr)) {
+			return OT_ERROR_INVALID_ARGS;
+		}
+
+		msg_info.mPeerPort = shell_strtoul(argv[2], 0, &rc);
+		if (rc) {
+			return OT_ERROR_INVALID_ARGS;
+		}
+	}
+
+	msg = otUdpNewMessage(NULL, &msg_settings);
+	if (msg == NULL) {
+		return OT_ERROR_NO_BUFS;
+	}
+
+	error = otMessageAppend(msg, argv[argc - 1], strlen(argv[argc - 1]));
+	if (error != OT_ERROR_NONE) {
+		otMessageFree(msg);
+		return error;
+	}
+
+	error = otUdpSend(NULL, &udp_socket, msg, &msg_info);
+	otMessageFree(msg);
+
+	return error;
+}
+
+static int cmd_udp_send(const struct shell *sh, size_t argc, char *argv[])
+{
+	return ot_cli_command_exec(cmd_udp_send_impl, sh, argc, argv);
+}
+
+static otError cmd_udp_close_impl(const struct shell *sh, size_t argc, char *argv[])
+{
+	return otUdpClose(NULL, &udp_socket);
+}
+
+static int cmd_udp_close(const struct shell *sh, size_t argc, char *argv[])
+{
+	return ot_cli_command_exec(cmd_udp_close_impl, sh, argc, argv);
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	udp_cmds, SHELL_CMD_ARG(open, NULL, "Open socket", cmd_udp_open, 1, 0),
+	SHELL_CMD_ARG(bind, NULL, "Bind socket [-u|-b] <addr> <port>", cmd_udp_bind, 3, 1),
+	SHELL_CMD_ARG(connect, NULL, "Connect socket <addr> <port>", cmd_udp_connect, 3, 0),
+	SHELL_CMD_ARG(send, NULL, "Send message [addr port] <message>", cmd_udp_send, 2, 2),
+	SHELL_CMD_ARG(close, NULL, "Close socket", cmd_udp_close, 1, 0), SHELL_SUBCMD_SET_END);
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	ot_cmds, SHELL_CMD_ARG(ifconfig, NULL, "Interface management", cmd_ifconfig, 1, 1),
 	SHELL_CMD_ARG(ipmaddr, NULL, "IPv6 multicast configuration", cmd_ipmaddr, 1, 2),
@@ -1909,10 +2078,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(thread, NULL, "Role management", cmd_thread, 2, 0),
 	SHELL_CMD_ARG(discover, NULL, "Thread discovery scan", cmd_discover, 1, 4),
 	SHELL_CMD_ARG(radio, NULL, "Radio configuration", cmd_radio, 1, 1),
+	SHELL_CMD_ARG(eui64, NULL, "EUI64 configuration", cmd_eui64, 1, 1),
+	SHELL_CMD_ARG(udp, &udp_cmds, "UDP subcommands", NULL, 1, 0),
 	SHELL_CMD_ARG(test_message, NULL, "Test message API", cmd_test_message, 1, 0),
-	SHELL_CMD_ARG(test_udp_init, NULL, "Test udp init API", cmd_test_udp_init, 1, 0),
-	SHELL_CMD_ARG(test_udp_send, NULL, "Test udp send API", cmd_test_udp_send, 1, 0),
-	SHELL_CMD_ARG(test_udp_close, NULL, "Test udp close API", cmd_test_udp_close, 1, 0),
 	SHELL_CMD_ARG(test_net_data, NULL, "Test netdata API", cmd_test_net_data, 1, 0),
 	SHELL_CMD_ARG(test_net_data_mesh_prefix, NULL, "Test netdata msh prefix API",
 		      cmd_test_net_data_mesh_prefix, 1, 0),
@@ -1989,8 +2157,9 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      "Network diag, args: <get|reset> <IPv6-address>"
 		      " <tlv-type ...>",
 		      cmd_test_net_diag, 4, 255),
-	SHELL_CMD_ARG(test_mesh_diag, NULL, "Mesh diag topology discovery, args: <start|cancel>"
-					    "[ip6] [children]",
+	SHELL_CMD_ARG(test_mesh_diag, NULL,
+		      "Mesh diag topology discovery, args: <start|cancel>"
+		      "[ip6] [children]",
 		      cmd_test_mesh_diag, 2, 2),
 	SHELL_SUBCMD_SET_END);
 

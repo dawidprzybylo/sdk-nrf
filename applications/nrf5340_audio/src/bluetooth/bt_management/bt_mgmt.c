@@ -10,6 +10,7 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
 #include <zephyr/bluetooth/hci.h>
+#include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/byteorder.h>
 #include <nrfx.h>
@@ -20,9 +21,7 @@
 #include "bt_mgmt_ctlr_cfg_internal.h"
 #include "bt_mgmt_adv_internal.h"
 #include "bt_mgmt_dfu_internal.h"
-#if CONFIG_BOARD_NRF5340_AUDIO_DK_NRF5340_CPUAPP
 #include "button_assignments.h"
-#endif
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_mgmt, CONFIG_BT_MGMT_LOG_LEVEL);
@@ -213,7 +212,6 @@ static void bt_enabled_cb(int err)
 
 static int bonding_clear_check(void)
 {
-#if CONFIG_BOARD_NRF5340_AUDIO_DK_NRF5340_CPUAPP
 	int ret;
 	bool pressed;
 
@@ -227,7 +225,6 @@ static int bonding_clear_check(void)
 		return ret;
 	}
 
-#endif
 	return 0;
 }
 
@@ -392,6 +389,15 @@ int bt_mgmt_init(void)
 	}
 
 #endif /* CONFIG_AUDIO_BT_MGMT_DFU */
+
+#ifdef CONFIG_MCUMGR_TRANSPORT_BT_DYNAMIC_SVC_REGISTRATION
+	/* Unregister SMP (Simple Management Protocol) service if DFU is not enabled */
+	ret = smp_bt_unregister();
+	if (ret) {
+		LOG_ERR("Failed to unregister SMP service: %d", ret);
+		return ret;
+	}
+#endif
 
 	ret = bt_mgmt_ctlr_cfg_init(IS_ENABLED(CONFIG_WDT_CTLR));
 	if (ret) {

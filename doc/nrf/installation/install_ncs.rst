@@ -38,6 +38,8 @@ Before you start setting up the toolchain, install available updates for your :r
 Install prerequisites
 *********************
 
+.. prerequisites-include-start
+
 Depending on your preferred development environment, install the following software tools.
 
 .. tabs::
@@ -56,6 +58,8 @@ Depending on your preferred development environment, install the following softw
 
       .. include:: /includes/install_sdk_common_prerequisites.txt
 
+.. prerequisites-include-end
+
 .. _gs_installing_toolchain:
 .. _gs_installing_tools:
 
@@ -63,6 +67,8 @@ Depending on your preferred development environment, install the following softw
 
 Install the |NCS| toolchain
 ***************************
+
+.. installncstoolchain-include-start
 
 The |NCS| :term:`toolchain` includes the Zephyr SDK and then adds tools and modules required to build |NCS| samples and applications on top of it.
 These include the :ref:`required SDK tools <requirements_toolchain_tools>`, the :ref:`Python dependencies <requirements_toolchain_python_deps>`, and the :ref:`GN tool <ug_matter_gs_tools_gn>` for creating :ref:`ug_matter` applications.
@@ -164,6 +170,8 @@ In this simplified structure preview, *<toolchain-installation>* corresponds to 
 
 You can check the versions of the required tools and Python dependencies on the :ref:`Requirements reference page <requirements_toolchain>`.
 
+.. installncstoolchain-include-end
+
 .. _cloning_the_repositories_win:
 .. _cloning_the_repositories:
 
@@ -171,6 +179,8 @@ You can check the versions of the required tools and Python dependencies on the 
 
 Get the |NCS| code
 ******************
+
+.. getncscode-include-start
 
 Every |NCS| release consists of a combination of :ref:`ncs_git_intro` repositories at different versions and revisions, managed together by :ref:`ncs_west_intro`.
 The revision of each of those repositories is determined by the current revision of the main (or :ref:`manifest <zephyr:west-manifests>`) repository, `sdk-nrf`_.
@@ -207,7 +217,14 @@ For more information about the repository and development model, see the :ref:`d
       #. In the extension's :guilabel:`Welcome View`, click on :guilabel:`Manage SDKs`.
          The list of actions appears in the |VSC|'s quick pick.
       #. Click :guilabel:`Install SDK`.
-         The list of available stable SDK versions appears in the |VSC|'s quick pick.
+         The list of available stable SDK versions appears in the |VSC|'s quick pick, grouped into two categories:
+
+         * Pre-packaged SDKs - Bundled by Nordic Semiconductor.
+           Available mostly for stable releases and some preview tags.
+           Recommended for faster and more reliable download and installation.
+         * GitHub - Taken from the `nRF Connect by Nordic Semiconductor GitHub organization <nrfconnect GitHub organization_>`_.
+           Available for stable releases, but also preview tags and branches (after disabling the filter in the quick pick).
+
       #. Select the SDK version to install.
          |install_latest_version|
 
@@ -221,29 +238,64 @@ For more information about the repository and development model, see the :ref:`d
          By default, this is one level up from the location where you installed the toolchain.
          This directory will hold all |NCS| repositories.
 
-      #. Start the toolchain environment for your operating system using the following command:
+      #. Start the toolchain environment for your operating system using the following command pattern, with ``--ncs-version`` corresponding to the toolchain version you have installed in the :ref:`previous step <gs_installing_tools>`:
 
          .. tabs::
 
             .. tab:: Windows
 
-               .. code-block:: console
+               .. parsed-literal::
+                  :class: highlight
 
-                  nrfutil sdk-manager toolchain launch --terminal
+                  nrfutil sdk-manager toolchain launch --ncs-version *version* --terminal
+
+               For example:
+
+               .. parsed-literal::
+                  :class: highlight
+
+                  nrfutil sdk-manager toolchain launch --ncs-version |release| --terminal
+
+               This example command starts the toolchain environment for the |NCS| |release|.
 
             .. tab:: Linux
 
-               .. code-block:: console
+               .. parsed-literal::
+                  :class: highlight
 
-                  nrfutil sdk-manager toolchain launch --shell
+                  nrfutil sdk-manager toolchain launch --ncs-version *version* --shell
+
+               For example:
+
+               .. parsed-literal::
+                  :class: highlight
+
+                  nrfutil sdk-manager toolchain launch --ncs-version |release| --shell
+
+               This example command starts the toolchain environment for the |NCS| |release|.
 
             .. tab:: macOS
 
-               .. code-block:: console
+               .. parsed-literal::
+                  :class: highlight
 
-                  nrfutil sdk-manager toolchain launch --shell
+                  nrfutil sdk-manager toolchain launch --ncs-version *version* --shell
+
+               For example:
+
+               .. parsed-literal::
+                  :class: highlight
+
+                  nrfutil sdk-manager toolchain launch --ncs-version |release| --shell
+
+               This example command starts the toolchain environment for the |NCS| |release|.
 
          ..
+
+         .. note::
+
+            You can also use other options instead of ``--ncs-version``.
+            See the `sdk-manager command documentation <sdk-manager Starting and inspecting the toolchain environment_>`_ for more information.
 
       #. Determine the identifier of the revision of the |NCS| you want to work with.
          See the table above for more information.
@@ -332,6 +384,8 @@ With the default location to install the toolchain (see the previous step) and t
 In this simplified structure preview, *<toolchain-installation>* corresponds to the toolchain version and *<west-workspace>* corresponds to the SDK version name.
 There are also additional directories, and the structure might change over time, for example if you later :ref:`change the state of development to a different revision <updating_repos>`.
 The full set of repositories and directories is defined in the :ref:`manifest file <zephyr:west-manifest-files>` (`see the file in the repository <west manifest file_>`_).
+
+.. getncscode-include-end
 
 .. _build_environment_cli:
 
@@ -616,5 +670,3 @@ To install the |NCS| system-wide, complete the following steps:
 #. If you want to build `Matter`_ applications, additionally install the `GN`_ meta-build system.
    This system generates the Ninja files that the |NCS| uses for Matter.
    See :ref:`manual_installation_gn` for more information.
-
-.. |install_latest_version| replace:: When you first install the |NCS|, it is recommended to install the latest released versions of the SDK and the toolchain.

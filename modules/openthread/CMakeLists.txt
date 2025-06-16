@@ -199,6 +199,7 @@ target_compile_definitions(ot-config INTERFACE
 target_compile_options(ot-config INTERFACE
     $<TARGET_PROPERTY:zephyr_interface,INTERFACE_COMPILE_OPTIONS>
     $<TARGET_PROPERTY:compiler,no_builtin>
+    $<$<CXX_COMPILER_ID:Clang>:-Wno-c99-extensions>
     -imacros ${AUTOCONF_H}
 )
 
@@ -269,7 +270,7 @@ if(CONFIG_OPENTHREAD_SETTINGS_RAM)
   list(APPEND ot_libs openthread-platform-utils-static)
 endif()
 
-zephyr_link_libraries(${ot_libs})
+target_link_libraries(zephyr PRIVATE ${ot_libs})
 
 endif()
 

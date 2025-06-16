@@ -23,7 +23,7 @@ Highlights
 
   * :ref:`direct_test_mode` and :ref:`radio_test` sample support.
   * Support for Bluetooth® LE, Thread, Zigbee, and multiprotocol applications and samples using :ref:`nrfxlib:mpsl`.
-  * Support for :ref:`nRF21540 development kit (DK) <nrf21540dk_nrf52840>`, :ref:`nRF21540 evaluation kit (EK) <ug_radio_fem_nrf21540ek>` and custom board configurations.
+  * Support for :zephyr:board:`nrf21540dk`, :ref:`nRF21540 evaluation kit (EK) <ug_radio_fem_nrf21540ek>` and custom board configurations.
 
 * Added Wi-Fi coexistence feature supported for development for Thread and Zigbee.
 * Added support for NFC and *pair before use* type of accessories to the Apple Find My add-on.
@@ -140,7 +140,7 @@ nRF9160
   * nRF9160: Asset Tracker has been deprecated in favor of Asset Tracker v2.
   * ``at_notif`` library has been deprecated in favor of the :ref:`at_monitor_readme` library.
   * ``at_cmd`` library has been deprecated in favor of Modem library's native AT interface.
-  * GPS driver has been deprecated in favor of the :ref:`GNSS interface<nrfxlib:gnss_interface>`.
+  * GPS driver has been deprecated in favor of the :ref:`GNSS interface <nrfxlib:gnss_interface>`.
 
 nRF5
 ====
@@ -198,7 +198,7 @@ Bluetooth mesh
 * Updated:
 
   * Updated the :ref:`bt_mesh_light_hsl_srv_readme` and the :ref:`bt_mesh_light_xyl_srv_readme` models to no longer extend the :ref:`bt_mesh_lightness_srv_readme` model, and instead get a pointer to this model in the initialization macro.
-  * Updated samples with support for the :ref:`zephyr:thingy53_nrf5340`.
+  * Updated samples with support for the :zephyr:board:`thingy53`.
   * Fixed an issue where beacons were stopped being sent after node reset.
   * Fixed an issue where the IV update procedure could be started immediately after the device has been provisioned.
   * Fixed multiple issues in the :ref:`bt_mesh_sensor_types_readme` module.

@@ -65,7 +65,7 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
-      revision: a4c30ef0bda4bfe77e61f5db4b7f53df8f414301
+      revision: 68ab1cf88c635a957aad4af56024469b13eb3b3d
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -79,12 +79,12 @@ manifest:
         #
         # Please keep this list sorted alphabetically.
         name-allowlist:
-          - percepio
           - canopennode
           - chre
           - cmsis
           - cmsis-dsp
           - cmsis-nn
+          - cmsis_6
           - edtt
           - fatfs
           - hal_nordic
@@ -104,10 +104,11 @@ manifest:
           - nrf_hw_models
           - nrf_wifi
           - open-amp
+          - percepio
           - picolibc
           - segger
-          - tinycrypt
           - tf-m-tests
+          - tinycrypt
           - uoscore-uedhoc
           - zcbor
           - zscilib
@@ -127,7 +128,7 @@ manifest:
           compare-by-default: true
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: 6df89a84be878d912dad5d7a5c6a9c82d2bdbab2
+      revision: 1916314a3664e2ce11963a66a8a7c6cc4e9e4d24
       path: bootloader/mcuboot
     - name: qcbor
       url: https://github.com/laurencelundblade/QCBOR
@@ -140,15 +141,15 @@ manifest:
     - name: oberon-psa-crypto
       path: modules/crypto/oberon-psa-crypto
       repo-path: sdk-oberon-psa-crypto
-      revision: a258e58246da0b34c7cb6fa27358807ffcd079ed
+      revision: 0c047bb1ab0bc92450906b451c706c7255938903
     - name: nrfxlib
       repo-path: sdk-nrfxlib
       path: nrfxlib
-      revision: ff48bc7b0da857911e490a2431fb7a4f6aeba8fd
+      revision: e380532c76d5750015bc4e53d7e2e9e27ac1f3c6
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tf-m/trusted-firmware-m
-      revision: 0002817d4e50c8832028c280996dfeac47938138
+      revision: bf3105bd6f49a758dee722e124e0dc0db9119afe
     - name: psa-arch-tests
       repo-path: sdk-psa-arch-tests
       path: modules/tee/tf-m/psa-arch-tests
@@ -156,7 +157,7 @@ manifest:
     - name: matter
       repo-path: sdk-connectedhomeip
       path: modules/lib/matter
-      revision: df5368cb9beec725a7ccac725a4aecec272b1897
+      revision: 3ccd6078b9b33af0fa6ddb71e51bb9860f9198a0
       west-commands: scripts/west/west-commands.yml
       submodules:
         - name: nlio
@@ -175,14 +176,14 @@ manifest:
     - name: nrf-802154
       repo-path: sdk-nrf-802154
       path: nrf-802154
-      revision: 8058d3003bbcef71b1b3b052c6a11a7e9903c0ae
+      revision: ab926396fe37113664734181cc4dfbb53fb61863
       groups:
         - nrf-802154
     - name: dragoon
       # Only for internal Nordic development
       repo-path: dragoon.git
       remote: dragoon
-      revision: 7b280b4125b8b93a40eb896caffe7795704c787e
+      revision: 2295c19a5a1230553828100e9888261d2b24baf3
       groups:
         - dragoon
     - name: cjson
@@ -196,7 +197,7 @@ manifest:
           compare-by-default: false
     - name: find-my
       repo-path: sdk-find-my
-      revision: a8c2cefc7b9b71a89fee99ade15cbfe6600427d0
+      revision: 58ffc984b57f301458590c07aa61bc0b025c12e0
       groups:
         - find-my
     - name: azure-sdk-for-c

@@ -44,8 +44,9 @@ config BT_LL_SOFTDEVICE
 	select BT_LL_SOFTDEVICE_HEADERS_INCLUDE
 	select MRAM_LATENCY if (SOC_NRF54H20_CPURAD && !MPSL_PM_USE_MRAM_LATENCY_SERVICE)
 	select MRAM_LATENCY_AUTO_REQ if (SOC_NRF54H20_CPURAD && !MPSL_PM_USE_MRAM_LATENCY_SERVICE)
+	select EXPERIMENTAL if SOC_SERIES_BSIM_NRFXX
 	depends on (SOC_SERIES_BSIM_NRFXX || SOC_SERIES_NRF52X || SOC_COMPATIBLE_NRF5340_CPUNET ||\
-			    SOC_NRF54H20_CPURAD || SOC_SERIES_NRF54LX)
+			    SOC_NRF54H20_CPURAD || SOC_SERIES_NRF54LX || SOC_SERIES_NRF71X)
 	depends on DT_HAS_NORDIC_BT_HCI_SDC_ENABLED
 	help
 	  Use SoftDevice Link Layer implementation.
@@ -63,14 +64,6 @@ config BT_LL_SOFTDEVICE_BUILD_TYPE_LIB
 	bool "Use library"
 
 endchoice
-
-config BT_CTLR_SDC_BSIM_BUILD
-	bool
-	default y if SOC_SERIES_BSIM_NRFXX
-	select EXPERIMENTAL
-	help
-	  Convenience config to indicate the SDC is being built for a babblesim
-	  target. Internal use only.
 
 # BT_HCI_TX_STACK_SIZE is declared in Zephyr and also here for a second time,
 # for set the valid default size of the HCI Tx stack.
@@ -322,9 +315,11 @@ choice BT_LL_SOFTDEVICE_VARIANT
 						     BT_CTLR_SDC_PAWR_ADV || \
 						     BT_CTLR_SDC_PAWR_SYNC || \
 						     BT_ISO || \
+						     BT_CTLR_CHANNEL_SOUNDING || \
 						     SOC_COMPATIBLE_NRF5340_CPUNET || \
 						     SOC_NRF54H20_CPURAD || \
-						     SOC_COMPATIBLE_NRF54LX)
+						     (SOC_COMPATIBLE_NRF54LX && TRUSTED_EXECUTION_NONSECURE) || \
+						     SOC_SERIES_NRF71X)
 	default BT_LL_SOFTDEVICE_CENTRAL if BT_OBSERVER
 	default BT_LL_SOFTDEVICE_PERIPHERAL if BT_BROADCASTER
 	help
@@ -550,6 +545,13 @@ config BT_CTLR_CHANNEL_SOUNDING
 	bool "Channel Sounding support"
 	help
 	  Enable Channel Sounding support.
+
+config BT_CTLR_CHANNEL_SOUNDING_TEST
+	bool "Channel Sounding test command support"
+	depends on BT_CTLR_CHANNEL_SOUNDING
+	default y
+	help
+	  Enable Channel Sounding test command support.
 
 config BT_CTLR_SDC_CS_COUNT
 	int "Number of concurrent connections supporting CS procedures"

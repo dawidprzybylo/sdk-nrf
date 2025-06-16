@@ -33,7 +33,9 @@ Syntax
 
   * ``0`` - Close a socket.
   * ``1`` - Open a socket for IP protocol family version 4.
+    Protocol family is ignored with ``<type>`` parameter value ``3``.
   * ``2`` - Open a socket for IP protocol family version 6.
+    Protocol family is ignored with ``<type>`` parameter value ``3``.
 
   When ``0``, the highest-ranked socket is made active after the current one is closed.
 
@@ -41,14 +43,15 @@ Syntax
 
   * ``1`` - Set ``SOCK_STREAM`` for the stream socket type using the TCP protocol.
   * ``2`` - Set ``SOCK_DGRAM`` for the datagram socket type using the UDP protocol.
-  * ``3`` - Set ``SOCK_RAW`` for the raw socket type using a generic IP protocol.
+  * ``3`` - Set ``SOCK_RAW`` for the raw socket type using a generic packet protocol.
+    The ``<op>`` parameter can be either ``1`` or ``2`` as raw socket ignores the protocol family.
 
 * The ``<role>`` parameter can accept one of the following values:
 
   * ``0`` - Client.
   * ``1`` - Server.
 
-* The ``<cid>`` parameter is an integer.
+* The ``<cid>`` parameter is an integer indicating the used PDN connection.
   It represents ``cid`` in the ``+CGDCONT`` command.
   Its default value is ``0``.
 
@@ -139,9 +142,9 @@ Response syntax
 
   * ``1`` - Set ``SOCK_STREAM`` for the stream socket type using the TCP protocol.
   * ``2`` - Set ``SOCK_DGRAM`` for the datagram socket type using the UDP protocol.
-  * ``3`` - Set ``SOCK_RAW`` for the raw socket type using a generic IP protocol.
+  * ``3`` - Set ``SOCK_RAW`` for the raw socket type using a generic packet protocol.
 
-* The ``<cid>`` parameter is an integer.
+* The ``<cid>`` parameter is an integer indicating the used PDN connection.
   It represents ``cid`` in the ``+CGDCONT`` command.
 
 Example
@@ -230,7 +233,7 @@ Syntax
   * ``1`` - Optional.
   * ``2`` - Required (default for client role).
 
-* The ``<cid>`` parameter is an integer.
+* The ``<cid>`` parameter is an integer indicating the used PDN connection.
   It represents ``cid`` in the ``+CGDCONT`` command.
   Its default value is ``0``.
 
@@ -319,7 +322,7 @@ Response syntax
 * The ``<sec_tag>`` value is an integer.
   It indicates to the modem the credential of the security tag to be used for establishing a secure connection.
 
-* The ``<cid>`` value is an integer.
+* The ``<cid>`` value is an integer indicating the used PDN connection.
   It represents ``cid`` in the ``+CGDCONT`` command.
 
 Example
@@ -436,12 +439,12 @@ Response syntax
 
 * The ``<sec_tag>`` value is an integer.
   It indicates to the modem the credential of the security tag to be used for establishing a secure connection.
-  For a non-secure socket, it returns the value of -1.
+  For a non-secure socket, it returns the value of –1.
 
 * The ``<ranking>`` value is an integer.
   It indicates the ranking value of this socket, where the largest value means the highest ranking.
 
-* The ``<cid>`` value is an integer.
+* The ``<cid>`` value is an integer indicating the used PDN connection.
   It represents ``cid`` in the ``+CGDCONT`` command.
 
 * The ``<handle_active>`` value is an integer that indicates the handle of the active socket.
@@ -508,44 +511,44 @@ Syntax
 
 * The ``<name>`` parameter can accept one of the following values:
 
-  * ``2`` - :c:macro:`SO_REUSEADDR` (set-only).
+  * ``2`` - :c:macro:`AT_SO_REUSEADDR` (set-only).
 
     * ``<value>`` is an integer that indicates whether the reuse of local addresses is enabled.
       It is ``0`` for disabled or ``1`` for enabled.
 
-  * ``20`` - :c:macro:`SO_RCVTIMEO`.
+  * ``20`` - :c:macro:`AT_SO_RCVTIMEO`.
 
     * ``<value>`` is an integer that indicates the receive timeout in seconds.
 
-  * ``21`` - :c:macro:`SO_SNDTIMEO`.
+  * ``21`` - :c:macro:`AT_SO_SNDTIMEO`.
 
     * ``<value>`` is an integer that indicates the send timeout in seconds.
 
-  * ``1030`` - :c:macro:`SO_SILENCE_ALL`.
+  * ``30`` - :c:macro:`AT_SO_SILENCE_ALL`.
 
     * ``<value>`` is an integer that indicates whether ICMP echo replies for IPv4 and IPv6 are disabled.
       It is ``0`` for allowing ICMP echo replies or ``1`` for disabling them.
 
-  * ``1031`` - :c:macro:`SO_IP_ECHO_REPLY`.
+  * ``31`` - :c:macro:`AT_SO_IP_ECHO_REPLY`.
 
     * ``<value>`` is an integer that indicates whether ICMP echo replies for IPv4 are enabled.
       It is ``0`` for disabled or ``1`` for enabled.
 
-  * ``1032`` - :c:macro:`SO_IPV6_ECHO_REPLY`.
+  * ``32`` - :c:macro:`AT_SO_IPV6_ECHO_REPLY`.
 
     * ``<value>`` is an integer that indicates whether ICMP echo replies for IPv6 are enabled.
       It is ``0`` for disabled or ``1`` for enabled.
 
-  * ``1040`` - :c:macro:`SO_BINDTOPDN` (set-only).
+  * ``40`` - :c:macro:`AT_SO_BINDTOPDN` (set-only).
 
     * ``<value>`` is an integer that indicates the packet data network ID to bind to.
 
-  * ``1055`` - :c:macro:`SO_TCP_SRV_SESSTIMEO`.
+  * ``55`` - :c:macro:`AT_SO_TCP_SRV_SESSTIMEO`.
 
     * ``<value>`` is an integer that indicates the TCP server session inactivity timeout for a socket.
       It accepts values from the range ``0`` to ``135``, where ``0`` is no timeout and ``135`` is 2 hours, 15 minutes.
 
-  * ``1061`` - :c:macro:`SO_RAI` (set-only).
+  * ``61`` - :c:macro:`AT_SO_RAI` (set-only).
     Release Assistance Indication (RAI).
 
     * ``<value>`` The option accepts an integer, indicating the type of RAI.
@@ -571,7 +574,7 @@ Syntax
         Indicates that the socket is in active use by a server application.
         This lets the modem stay in connected mode longer.
 
-  * ``1062`` - :c:macro:`SO_IPV6_DELAYED_ADDR_REFRESH`.
+  * ``62`` - :c:macro:`AT_SO_IPV6_DELAYED_ADDR_REFRESH`.
 
     * ``<value>`` is an integer that indicates whether delayed IPv6 address refresh is enabled.
       It is ``0`` for disabled or ``1`` for enabled.
@@ -651,31 +654,31 @@ Syntax
 
 * The ``<name>`` parameter can accept one of the following values:
 
-  * ``2`` - :c:macro:`TLS_HOSTNAME`.
+  * ``2`` - :c:macro:`AT_TLS_HOSTNAME`.
 
     * ``<value>`` is a string that indicates the hostname to check against during TLS handshakes.
       It can be ``NULL`` to disable hostname verification.
 
-  * ``4`` - :c:macro:`TLS_CIPHERSUITE_USED` (get-only).
+  * ``4`` - :c:macro:`AT_TLS_CIPHERSUITE_USED` (get-only).
     The TLS cipher suite chosen during the TLS handshake.
     This option is only supported with modem firmware 2.0.0 and newer.
 
-  * ``5`` - :c:macro:`TLS_PEER_VERIFY`.
+  * ``5`` - :c:macro:`AT_TLS_PEER_VERIFY`.
 
     * ``<value>`` is an integer that indicates what peer verification level should be used.
       It is ``0`` for none, ``1`` for optional or ``2`` for required.
 
-  * ``12`` - :c:macro:`TLS_SESSION_CACHE`.
+  * ``12`` - :c:macro:`AT_TLS_SESSION_CACHE`.
 
     * ``<value>`` is an integer that indicates whether TLS session caching should be used.
       It is ``0`` for disabled or ``1`` for enabled.
 
-  * ``13`` - :c:macro:`TLS_SESSION_CACHE_PURGE` (set-only).
+  * ``13`` - :c:macro:`AT_TLS_SESSION_CACHE_PURGE` (set-only).
     Indicates that the TLS session cache should be deleted.
 
     * ``<value>`` can be any integer value.
 
-  * ``14`` - :c:macro:`TLS_DTLS_CID` (set-only).
+  * ``14`` - :c:macro:`AT_TLS_DTLS_CID` (set-only).
 
     * ``<value>`` is an integer that indicates the DTLS connection identifier setting.
       It can be one of the following values:
@@ -687,13 +690,13 @@ Syntax
     This option is only supported with modem firmware 1.3.5 and newer.
     See :ref:`nrfxlib:dtls_cid_setting` for more details regarding the allowed values.
 
-  * ``15`` - :c:macro:`TLS_DTLS_CID_STATUS` (get-only).
+  * ``15`` - :c:macro:`AT_TLS_DTLS_CID_STATUS` (get-only).
     It is the DTLS connection identifier status.
     It can be retrieved after the DTLS handshake.
     This option is only supported with modem firmware 1.3.5 and newer.
     See :ref:`nrfxlib:dtls_cid_status` for more details regarding the returned values.
 
-  * ``1018`` - :c:macro:`TLS_DTLS_HANDSHAKE_TIMEO`.
+  * ``18`` - :c:macro:`AT_TLS_DTLS_HANDSHAKE_TIMEO`.
 
     * ``<value>`` is an integer that indicates the DTLS handshake timeout in seconds.
       It can be one of the following values: ``1``, ``3``, ``7``, ``15``, ``31``, ``63``, ``123``.
@@ -1234,9 +1237,10 @@ Response syntax
    #XPOLL: <handle>,<revents>
 
 * The ``<error>`` value is an error code when the poll fails.
-* The ``<handle>`` value is an integer. It is the handle of a socket that have events returned, so-called ``revents``.
+* The ``<handle>`` value is an integer.
+  It is the handle of a socket that have events returned, so-called ``revents``.
 * The ``<revents>`` value is a hexadecimal string.
-  It represents the returned events, which could be a combination of ``ZSOCK_POLLIN``, ``ZSOCK_POLLERR``, ``ZSOCK_POLLHUP`` and ``ZSOCK_POLLNVAL``.
+  It represents the returned events, which could be a combination of ``POLLIN``, ``POLLERR``, ``POLLHUP``, and ``POLLNVAL``.
 
 Examples
 ~~~~~~~~
@@ -1265,6 +1269,213 @@ Test command
 ------------
 
 The test command is not supported.
+
+Asynchronous socket polling #XAPOLL
+===================================
+
+The ``#XAPOLL`` command allows you to receive Unsolicited Result Code (URC) notifications for events on all opened sockets or for selected sockets that have already been opened.
+
+.. note::
+
+    The ``#XAPOLL`` command is not usable at the same time with the socket AT commands that use poll internally (``#XPOLL`` and ``#XACCEPT``).
+
+Set command
+-----------
+
+The set command allows you to activate or deactivate asynchronous polling for sockets.
+
+Activating asynchronous polling when it is already running, will stop the current polling and start a new one with the new parameters.
+
+Syntax
+~~~~~~
+
+::
+
+   #XAPOLL=<op>,<events>[,<handle1>[,<handle2> ...<handle8>]
+
+* The ``<op>`` value can accept one of the following values:
+
+  * ``0`` - Stop asynchronous polling.
+  * ``1`` - Start asynchronous polling.
+
+* The ``<events>`` value is an integer, which is interpreted as a bit field.
+  It represents the events to poll for, which can be a combination of ``POLLIN`` and ``POLLOUT``.
+  Permanent error and closure events (``POLLERR``, ``POLLHUP``, and ``POLLNVAL``) are always polled.
+  The value can be any combination of the following values summed up:
+
+  * ``0`` - Poll the default events.
+  * ``1`` - Read events (``POLLIN``) are polled, in addition to the default events.
+  * ``4`` - Write events (``POLLOUT``) are polled, in addition to the default events.
+
+* The ``<handleN>`` value sets the socket handle to poll.
+  Handles are sent in the ``AT#XSOCKET`` response.
+  Handles can also be obtained with ``AT#XSOCKET?`` or ``AT#XSOCKETSELECT?`` commands.
+  If no handles are specified, all open sockets will be polled, including any new sockets that are created after ``#XAPOLL`` has been started.
+
+Response syntax
+~~~~~~~~~~~~~~~
+
+When the asynchronous socket events are enabled, SLM sends events as URC notifications.
+
+* For ``POLLIN`` events, the URC notification is sent only for the first incoming data on the socket.
+  ``AT#XRECV`` or ``AT#XRECVFROM`` command will re-enable the URC notification for the next incoming data.
+
+* For ``POLLOUT`` events, the URC notification is sent only for the first time when the socket is ready for writing.
+  ``AT#XSEND`` or ``AT#XSENDTO`` command will re-enable the URC notification for the next time when the socket is ready for writing.
+
+* For ``POLLERR``, ``POLLHUP``, and ``POLLNVAL`` events, the URC notification is sent only once for each socket.
+  No further URC notifications will be sent for the same socket.
+
+::
+
+   #XAPOLL: <handle>,<revents>
+
+* The ``<handle>`` value is an integer.
+  It is the handle of the socket that has events.
+* The ``<revents>`` value is an integer, which must be interpreted as a bit field.
+  It represents the returned events as a combination of ``POLLIN`` (1), ``POLLOUT`` (4), ``POLLERR`` (8), ``POLLHUP`` (16), and ``POLLNVAL`` (32) summed up.
+  Hexadecimal representation is avoided to support AT command parsers that do not support hexadecimal values.
+
+Example
+~~~~~~~
+
+::
+
+   AT#XAPOLL=1,5
+
+   OK
+
+   AT#XSOCKET=1,1,0
+
+   #XSOCKET: 1,1,6
+
+   OK
+
+   AT#XCONNECT="test.server.com",1234
+
+   #XCONNECT: 1
+
+   OK
+
+   #XAPOLL: 1,4
+
+   // Send data to the test server, which will echo it back.
+   AT#XSEND="echo"
+
+   #XSEND: 4
+
+   OK
+
+   #XAPOLL: 1,4
+
+   // Test server sends the data back and closes the connection. POLLIN and POLLHUP events are received.
+   #XAPOLL: 1,17
+
+   AT#XRECV=1
+
+   #XRECV: 4
+   echo
+   OK
+
+   AT#XSOCKET=0
+
+   #XSOCKET: 0,"closed"
+
+   OK
+
+   // #XAPOLL: 1,32 (POLLNVAL) is not received here as a closure event POLLHUP was already received.
+
+   AT#XAPOLL=0
+
+   OK
+
+Read command
+------------
+
+The read command allows you to check the status of asynchronous polling.
+
+Syntax
+~~~~~~
+
+::
+
+   #XAPOLL?
+
+Response syntax
+~~~~~~~~~~~~~~~
+
+::
+
+   #XAPOLL: <running>,<events>,[<handle1> ...<handle8>]
+
+* The ``<running>`` value can be one of the following integers:
+
+  * ``0`` - Asynchronous polling is not running.
+  * ``1`` - Asynchronous polling is running.
+
+* The ``<events>`` value is an integer, which must be interpreted as a bit field.
+  It represents the events that are being polled, which can be any combination of ``POLLIN`` and ``POLLOUT``.
+  Permanent error and closure events (``POLLERR``, ``POLLHUP``, and ``POLLNVAL``) are always polled.
+  The value can be any combination of the following values:
+
+  * ``0`` - Poll the default events.
+  * ``1`` - Poll read events (``POLLIN``) in addition to the default events.
+  * ``4`` - Poll write events (``POLLOUT``) in addition to the default events.
+
+* The ``<handleN>`` values return the socket handles that are being polled.
+
+Example
+~~~~~~~~
+
+::
+
+   AT#XSOCKET=1,1,0
+
+
+   #XSOCKET: 0,1,6
+
+   OK
+   AT#XAPOLL=1,1
+
+
+   OK
+   AT#XAPOLL?
+
+
+   #XAPOLL: 1,1,0
+
+   OK
+
+Test command
+------------
+
+The test command provides information about the command and its parameters.
+
+Syntax
+~~~~~~
+
+::
+
+   AT#XAPOLL=?
+
+Response syntax
+~~~~~~~~~~~~~~~
+
+::
+
+   #XAPOLL: <stop/start>,<events>,<handle1>,<handle2>,...
+
+Example
+~~~~~~~~
+
+::
+
+   AT#XAPOLL=?
+
+
+   #XAPOLL: (0,1),<0,1,4,5>,<handle1>,<handle2>,...
+
+   OK
 
 Resolve hostname #XGETADDRINFO
 ==============================

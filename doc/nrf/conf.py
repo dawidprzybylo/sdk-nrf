@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Nordic Semiconductor
+# Copyright (c) 2025 Nordic Semiconductor
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
@@ -56,6 +56,7 @@ extensions = [
     "notfound.extension",
     "ncs_tool_versions",
     "page_filter",
+    "sphinxcontrib.plantuml",
 ]
 
 linkcheck_ignore = [

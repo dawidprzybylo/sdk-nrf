@@ -26,7 +26,7 @@ Overview
 
 When the sample starts, it initializes the NFC tag and loads the NDEF message from the file in flash memory.
 If the NDEF message file does not exist, a default message is generated.
-It is a URI message with a URI record containing the URL "nordicsemi.com".
+It is a URI message with a URI record containing the URL ``nordicsemi.com``.
 The sample then sets up the NFC library for the Type 4 Tag platform, which uses the NDEF message and senses the external NFC field.
 
 The library works in Read-Write emulation mode.
@@ -72,9 +72,6 @@ Building and running
 
 .. note::
    |nfc_nfct_driver_note|
-
-.. note::
-   |54H_engb_2_8|
 
 Testing
 =======

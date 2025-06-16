@@ -16,6 +16,9 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(bt_mgmt_adv, CONFIG_BT_MGMT_ADV_LOG_LEVEL);
 
+struct k_work_q adv_work_q;
+K_THREAD_STACK_DEFINE(adv_work_q_stack_area, CONFIG_BT_MGMT_ADV_STACK_SIZE);
+
 ZBUS_CHAN_DECLARE(bt_mgmt_chan);
 
 #ifndef CONFIG_BT_MAX_PAIRED
@@ -34,14 +37,14 @@ static const struct bt_data *per_adv_local[CONFIG_BT_EXT_ADV_MAX_ADV_SET];
 static size_t per_adv_local_size[CONFIG_BT_EXT_ADV_MAX_ADV_SET];
 
 /* Bonded address queue */
-K_MSGQ_DEFINE(bonds_queue, sizeof(bt_addr_le_t), BONDS_QUEUE_SIZE, 4);
-K_MSGQ_DEFINE(adv_queue, sizeof(uint8_t), CONFIG_BT_EXT_ADV_MAX_ADV_SET, 4);
+K_MSGQ_DEFINE(bonds_q, sizeof(bt_addr_le_t), BONDS_QUEUE_SIZE, sizeof(void *));
+K_MSGQ_DEFINE(adv_q, sizeof(uint8_t), CONFIG_BT_EXT_ADV_MAX_ADV_SET, sizeof(void *));
 
 static struct bt_le_adv_param ext_adv_param = {
 	.id = BT_ID_DEFAULT,
 	.sid = CONFIG_BLE_ACL_ADV_SID,
 	.secondary_max_skip = 0,
-	.options = BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_NAME,
+	.options = BT_LE_ADV_OPT_EXT_ADV,
 	.interval_min = CONFIG_BLE_ACL_EXT_ADV_INT_MIN,
 	.interval_max = CONFIG_BLE_ACL_EXT_ADV_INT_MAX,
 	.peer = NULL,
@@ -77,7 +80,7 @@ static void bond_find(const struct bt_bond_info *info, void *user_data)
 		bt_conn_unref(conn);
 	}
 
-	ret = k_msgq_put(&bonds_queue, (void *)&info->addr, K_NO_WAIT);
+	ret = k_msgq_put(&bonds_q, (void *)&info->addr, K_NO_WAIT);
 	if (ret) {
 		LOG_WRN("No space in the queue for the bond");
 	}
@@ -233,13 +236,13 @@ static void advertising_process(struct k_work *work)
 	struct bt_mgmt_msg msg;
 	uint8_t ext_adv_index;
 
-	ret = k_msgq_get(&adv_queue, &ext_adv_index, K_NO_WAIT);
+	ret = k_msgq_get(&adv_q, &ext_adv_index, K_NO_WAIT);
 	if (ret) {
 		LOG_ERR("No ext_adv_index found");
 		return;
 	}
 
-	k_msgq_purge(&bonds_queue);
+	k_msgq_purge(&bonds_q);
 
 	if (IS_ENABLED(CONFIG_BT_BONDABLE)) {
 		bt_foreach_bond(BT_ID_DEFAULT, bond_find, NULL);
@@ -257,7 +260,7 @@ static void advertising_process(struct k_work *work)
 
 	bt_addr_le_t addr;
 
-	if (!k_msgq_get(&bonds_queue, &addr, K_NO_WAIT) && !dir_adv_timed_out) {
+	if (!k_msgq_get(&bonds_q, &addr, K_NO_WAIT) && !dir_adv_timed_out) {
 		ret = direct_adv_create(ext_adv_index, addr);
 		if (ret) {
 			LOG_WRN("Failed to create direct advertisement: %d", ret);
@@ -317,10 +320,10 @@ void bt_mgmt_dir_adv_timed_out(uint8_t ext_adv_index)
 	}
 
 	if (IS_ENABLED(CONFIG_BT_FILTER_ACCEPT_LIST)) {
-		ret = bt_le_ext_adv_create(LE_AUDIO_EXTENDED_ADV_CONN_NAME_FILTER, &adv_cb,
+		ret = bt_le_ext_adv_create(LE_AUDIO_EXTENDED_ADV_CONN_FILTER, &adv_cb,
 					   &ext_adv[ext_adv_index]);
 	} else {
-		ret = bt_le_ext_adv_create(LE_AUDIO_EXTENDED_ADV_CONN_NAME, &adv_cb,
+		ret = bt_le_ext_adv_create(LE_AUDIO_EXTENDED_ADV_CONN, &adv_cb,
 					   &ext_adv[ext_adv_index]);
 	}
 
@@ -412,12 +415,12 @@ int bt_mgmt_adv_start(uint8_t ext_adv_index, const struct bt_data *adv, size_t a
 			return -ENOENT;
 		}
 
-		ret = k_msgq_put(&adv_queue, &ext_adv_index, K_NO_WAIT);
+		ret = k_msgq_put(&adv_q, &ext_adv_index, K_NO_WAIT);
 		if (ret) {
 			LOG_ERR("No space in the queue for adv_index");
 			return -ENOMEM;
 		}
-		k_work_submit(&adv_work);
+		k_work_submit_to_queue(&adv_work_q, &adv_work);
 
 		return 0;
 	}
@@ -446,7 +449,7 @@ int bt_mgmt_adv_start(uint8_t ext_adv_index, const struct bt_data *adv, size_t a
 	}
 
 	if (connectable) {
-		ret = bt_le_ext_adv_create(LE_AUDIO_EXTENDED_ADV_CONN_NAME, &adv_cb,
+		ret = bt_le_ext_adv_create(LE_AUDIO_EXTENDED_ADV_CONN, &adv_cb,
 					   &ext_adv[ext_adv_index]);
 		if (ret) {
 			LOG_ERR("Unable to create a connectable extended advertising set: %d", ret);
@@ -460,12 +463,12 @@ int bt_mgmt_adv_start(uint8_t ext_adv_index, const struct bt_data *adv, size_t a
 		}
 	}
 
-	ret = k_msgq_put(&adv_queue, &ext_adv_index, K_NO_WAIT);
+	ret = k_msgq_put(&adv_q, &ext_adv_index, K_NO_WAIT);
 	if (ret) {
 		LOG_ERR("No space in the queue for adv_index");
 		return -ENOMEM;
 	}
-	k_work_submit(&adv_work);
+	k_work_submit_to_queue(&adv_work_q, &adv_work);
 
 	return 0;
 }
@@ -473,4 +476,8 @@ int bt_mgmt_adv_start(uint8_t ext_adv_index, const struct bt_data *adv, size_t a
 void bt_mgmt_adv_init(void)
 {
 	k_work_init(&adv_work, advertising_process);
+	k_work_queue_init(&adv_work_q);
+	k_work_queue_start(&adv_work_q, adv_work_q_stack_area,
+			   K_THREAD_STACK_SIZEOF(adv_work_q_stack_area),
+			   CONFIG_BT_MGMT_ADV_THREAD_PRIO, NULL);
 }

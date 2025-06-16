@@ -42,7 +42,7 @@
 
 #define CRLF "\r\n"
 
-#define QUERY_ITEMS_MAX 5
+#define QUERY_ITEMS_MAX 6
 
 char tok_jwt_plain[] = AUTH_HDR_BEARER_JWT_DUMMY;
 char http_auth_hdr[] = AUTH_HDR_BEARER AUTH_HDR_BEARER_JWT_DUMMY CRLF;
@@ -328,17 +328,19 @@ static int rest_client_request_url_valid(struct rest_client_req_context *req_ctx
 		char *command;
 		char *txMaxSize;
 		char *rxMaxSize;
+		char *limit;
 	};
 
-	/* 'txMaxSize', 'rxMaxSize', 'mver', 'cver' and 'after' */
-	char *query_items[QUERY_ITEMS_MAX] = { NULL, NULL, NULL, NULL };
+	/* 'txMaxSize', 'rxMaxSize', 'mver', 'cver', limit and 'after' */
+	char *query_items[QUERY_ITEMS_MAX] = {};
 
 	struct url_info info = { .apiver = 0,
 				 .mversion = NULL,
 				 .endpoint = NULL,
 				 .command = NULL,
 				 .txMaxSize = NULL,
-				 .rxMaxSize = NULL };
+				 .rxMaxSize = NULL,
+				 .limit = NULL };
 
 	tokens = (char *)malloc(strlen(req_ctx->url) + 1);
 
@@ -405,6 +407,10 @@ static int rest_client_request_url_valid(struct rest_client_req_context *req_ctx
 			info.rxMaxSize = &(query_items[idx][strlen("rxMaxSize=")]);
 			TEST_ASSERT_EQUAL_INT(
 				CONFIG_NRF_PROVISIONING_RX_BUF_SZ, atoi(info.rxMaxSize));
+		} else if (strncmp(query_items[idx], "limit=", strlen("limit=")) == 0) {
+			info.limit = &(query_items[idx][strlen("limit=")]);
+			TEST_ASSERT_EQUAL_INT(
+				CONFIG_NRF_PROVISIONING_CBOR_RECORDS, atoi(info.limit));
 		} else if (strncmp(query_items[idx], "after=", strlen("after=")) == 0) {
 			;
 		} else {
@@ -876,6 +882,7 @@ void test_codec_endorsement_keygen_invalid(void)
  * - To see that a configuration is decoded, written and responded to successfully
  * - Encoded output corresponds to the encoded input
  */
+
 void test_codec_config_store1_valid(void)
 {
 	struct cdc_context cdc_ctx;
@@ -900,8 +907,10 @@ void test_codec_config_store1_valid(void)
 
 	nrf_provisioning_codec_setup(&cdc_ctx, at_buff, sizeof(at_buff));
 
+	/* CBOR data is not null terminated */
+	char interval[] = {'9', '9'};
 	__cmock_settings_save_one_ExpectAndReturn(
-		"provisioning/interval-sec", "99", sizeof("99"), 0);
+		"provisioning/interval-sec", interval, sizeof(interval), 0);
 
 	int ret = nrf_provisioning_codec_process_commands();
 
@@ -911,7 +920,6 @@ void test_codec_config_store1_valid(void)
 
 	nrf_provisioning_codec_teardown();
 }
-
 /*
  * - Detect invalid CBOR payload
  * - To see that an invalid encoding is detected

@@ -72,8 +72,7 @@ struct temp_cap_storage {
 /* Since there is no subgroups for CIG we will use 1 as a hard coded value */
 static struct le_audio_unicast_server unicast_servers[CONFIG_BT_ISO_MAX_CIG][1][CONFIG_BT_MAX_CONN];
 
-K_MSGQ_DEFINE(cap_start_msgq, sizeof(struct stream_index), CONFIG_BT_ISO_MAX_CHAN,
-	      sizeof(uint32_t));
+K_MSGQ_DEFINE(cap_start_q, sizeof(struct stream_index), CONFIG_BT_ISO_MAX_CHAN, sizeof(void *));
 
 static struct temp_cap_storage temp_cap[CONFIG_BT_ISO_MAX_CHAN];
 
@@ -134,7 +133,7 @@ static void cap_start_worker(struct k_work *work)
 	int stream_iterator = 0;
 
 	/* Check msgq for a pending start procedure */
-	ret = k_msgq_get(&cap_start_msgq, &idx, K_NO_WAIT);
+	ret = k_msgq_get(&cap_start_q, &idx, K_NO_WAIT);
 	if (ret) {
 		LOG_ERR("Failed to get device index for pending cap start procedure: %d", ret);
 		return;
@@ -241,7 +240,7 @@ static void cap_start_worker(struct k_work *work)
 	ret = bt_cap_initiator_unicast_audio_start(&param);
 	if (ret == -EBUSY) {
 		/* Try again once the ongoing start procedure is completed */
-		ret = k_msgq_put(&cap_start_msgq, &idx, K_NO_WAIT);
+		ret = k_msgq_put(&cap_start_q, &idx, K_NO_WAIT);
 		if (ret) {
 			LOG_ERR("Failed to put device_index on the queue: %d", ret);
 		}
@@ -503,6 +502,7 @@ static void set_color_if_supported(char *str, uint16_t bitfield, uint16_t mask)
 		strcat(str, COLOR_GREEN);
 	} else {
 		strcat(str, COLOR_RED);
+		strcat(str, "!");
 	}
 }
 
@@ -544,7 +544,7 @@ static bool caps_print_cb(struct bt_data *data, void *user_data)
 
 	if (data->type == BT_AUDIO_CODEC_CAP_TYPE_DURATION) {
 		uint16_t dur_bit = sys_get_le16(data->data);
-		char supported_dur[30] = "";
+		char supported_dur[80] = "";
 
 		set_color_if_supported(supported_dur, dur_bit, BT_AUDIO_CODEC_CAP_DURATION_7_5);
 		strcat(supported_dur, "7.5, ");
@@ -556,7 +556,7 @@ static bool caps_print_cb(struct bt_data *data, void *user_data)
 
 	if (data->type == BT_AUDIO_CODEC_CAP_TYPE_CHAN_COUNT) {
 		uint16_t chan_bit = sys_get_le16(data->data);
-		char supported_chan[120] = "";
+		char supported_chan[140] = "";
 
 		set_color_if_supported(supported_chan, chan_bit, BT_AUDIO_CODEC_CAP_CHAN_COUNT_1);
 		strcat(supported_chan, "1, ");
@@ -704,33 +704,6 @@ static bool valid_codec_cap_check(struct bt_audio_codec_cap cap_array[], uint8_t
 	}
 
 	return valid_result;
-}
-
-/**
- * @brief Set the allocation to a preset codec configuration.
- *
- * @param codec The preset codec configuration.
- * @param loc   Location bitmask setting.
- *
- */
-static void bt_audio_codec_allocation_set(struct bt_audio_codec_cfg *codec_cfg,
-					  enum bt_audio_location loc)
-{
-	for (size_t i = 0U; i < codec_cfg->data_len;) {
-		const uint8_t len = codec_cfg->data[i++];
-		const uint8_t type = codec_cfg->data[i++];
-		uint8_t *value = &codec_cfg->data[i];
-		const uint8_t value_len = len - sizeof(type);
-
-		if (type == BT_AUDIO_CODEC_CFG_CHAN_ALLOC) {
-			const uint32_t loc_32 = loc;
-
-			sys_put_le32(loc_32, value);
-
-			return;
-		}
-		i += value_len;
-	}
 }
 
 static int update_cap_sink_stream_qos(struct le_audio_unicast_server *unicast_server,
@@ -1004,8 +977,62 @@ static void discover_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
 		if (valid_codec_cap_check(unicast_server->sink_codec_cap,
 					  temp_cap[temp_cap_index].num_caps, BT_AUDIO_DIR_SINK,
 					  idx.lvl3)) {
-			bt_audio_codec_allocation_set(&lc3_preset_sink.codec_cfg,
-						      unicast_server->location);
+
+			ret = bt_audio_codec_cfg_set_val(&lc3_preset_sink.codec_cfg,
+							 BT_AUDIO_CODEC_CFG_CHAN_ALLOC,
+							 (uint8_t *)&unicast_server->location,
+							 sizeof(unicast_server->location));
+			if (ret < 0) {
+				LOG_ERR("Failed to set codec channel allocation: %d", ret);
+				return;
+			}
+
+			const uint8_t *codec_frame_len_ptr = NULL;
+
+			ret = bt_audio_codec_cfg_get_val(&lc3_preset_sink.codec_cfg,
+							 BT_AUDIO_CODEC_CFG_FRAME_LEN,
+							 &codec_frame_len_ptr);
+			if (ret < 0) {
+				LOG_ERR("Failed to get codec frame length: %d", ret);
+				return;
+			}
+
+			uint16_t cap_max_frame_len = 0;
+			uint16_t codec_frame_len = sys_get_le16(codec_frame_len_ptr);
+
+			for (int i = 0; i < temp_cap[temp_cap_index].num_caps; i++) {
+				uint16_t cap_max_frame_len_temp = 0;
+				const uint8_t *cap_max_frame_len_temp_ptr = NULL;
+
+				ret = bt_audio_codec_cap_get_val(&temp_cap[temp_cap_index].codec[i],
+								 BT_AUDIO_CODEC_CFG_FRAME_LEN,
+								 &cap_max_frame_len_temp_ptr);
+				if (ret < 0) {
+					LOG_ERR("Failed to get codec cap frame length: %d", ret);
+					return;
+				}
+
+				/* The first 16 bits are the min frame length */
+				cap_max_frame_len_temp =
+					sys_get_le16(cap_max_frame_len_temp_ptr + sizeof(uint16_t));
+
+				if (cap_max_frame_len_temp > cap_max_frame_len) {
+					cap_max_frame_len = cap_max_frame_len_temp;
+				}
+			}
+
+			LOG_DBG("Codec_frame_len: %d, cap_max_frame_len: %d", codec_frame_len,
+				cap_max_frame_len);
+
+			if (codec_frame_len > cap_max_frame_len) {
+				ret = bt_audio_codec_cfg_set_val(
+					&lc3_preset_sink.codec_cfg, BT_AUDIO_CODEC_CFG_FRAME_LEN,
+					(uint8_t *)&cap_max_frame_len, sizeof(cap_max_frame_len));
+				if (ret < 0) {
+					LOG_ERR("Failed to set codec frame length: %d", ret);
+					return;
+				}
+			}
 		} else {
 			/* NOTE: The string below is used by the Nordic CI system */
 			LOG_WRN("No valid codec capability found for %s sink",
@@ -1016,8 +1043,14 @@ static void discover_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
 		if (valid_codec_cap_check(unicast_server->source_codec_cap,
 					  temp_cap[temp_cap_index].num_caps, BT_AUDIO_DIR_SOURCE,
 					  idx.lvl3)) {
-			bt_audio_codec_allocation_set(&lc3_preset_source.codec_cfg,
-						      unicast_server->location);
+			ret = bt_audio_codec_cfg_set_val(&lc3_preset_source.codec_cfg,
+							 BT_AUDIO_CODEC_CFG_CHAN_ALLOC,
+							 (uint8_t *)&unicast_server->location,
+							 sizeof(unicast_server->location));
+			if (ret < 0) {
+				LOG_ERR("Failed to set codec channel allocation: %d", ret);
+				return;
+			}
 		} else {
 			LOG_WRN("No valid codec capability found for %s source",
 				unicast_server->ch_name);
@@ -1050,7 +1083,7 @@ static void discover_cb(struct bt_conn *conn, int err, enum bt_audio_dir dir)
 		return;
 	}
 
-	ret = k_msgq_put(&cap_start_msgq, &idx, K_NO_WAIT);
+	ret = k_msgq_put(&cap_start_q, &idx, K_NO_WAIT);
 	if (ret) {
 		LOG_ERR("Failed to put device_index on the queue: %d", ret);
 		return;
@@ -1293,20 +1326,23 @@ static void stream_released_cb(struct bt_bap_stream *stream)
 
 #if (CONFIG_BT_AUDIO_RX)
 static void stream_recv_cb(struct bt_bap_stream *stream, const struct bt_iso_recv_info *info,
-			   struct net_buf *buf)
+			   struct net_buf *audio_frame)
 {
 	int ret;
-	bool bad_frame = false;
-	struct stream_index idx;
+	struct audio_metadata meta;
 
 	if (receive_cb == NULL) {
 		LOG_ERR("The RX callback has not been set");
 		return;
 	}
 
-	if (!(info->flags & BT_ISO_FLAGS_VALID)) {
-		bad_frame = true;
+	ret = le_audio_metadata_populate(&meta, stream, info, audio_frame);
+	if (ret) {
+		LOG_ERR("Failed to populate meta data: %d", ret);
+		return;
 	}
+
+	struct stream_index idx;
 
 	ret = device_index_get(stream->conn, &idx);
 	if (ret) {
@@ -1314,8 +1350,7 @@ static void stream_recv_cb(struct bt_bap_stream *stream, const struct bt_iso_rec
 		return;
 	}
 
-	receive_cb(buf->data, buf->len, bad_frame, info->ts, idx.lvl3,
-		   bt_audio_codec_cfg_get_octets_per_frame(stream->codec_cfg));
+	receive_cb(audio_frame, &meta, idx.lvl3);
 }
 #endif /* (CONFIG_BT_AUDIO_RX) */
 
@@ -1407,7 +1442,7 @@ static void unicast_start_complete_cb(int err, struct bt_conn *conn)
 	}
 
 	LOG_DBG("Unicast start complete cb");
-	ret = k_msgq_peek(&cap_start_msgq, &idx);
+	ret = k_msgq_peek(&cap_start_q, &idx);
 	if (ret == 0) {
 		/* Pending start procedure found, call k_work */
 		k_work_submit(&cap_start_work);
@@ -1444,7 +1479,7 @@ static void unicast_stop_complete_cb(int err, struct bt_conn *conn)
 					.lvl2 = 0,
 					.lvl3 = j,
 				};
-				ret = k_msgq_put(&cap_start_msgq, &idx, K_NO_WAIT);
+				ret = k_msgq_put(&cap_start_q, &idx, K_NO_WAIT);
 				if (ret) {
 					LOG_ERR("Failed to put device_index %d on the queue: %d", j,
 						ret);
@@ -1715,7 +1750,7 @@ int unicast_client_stop(uint8_t cig_index)
 	return 0;
 }
 
-int unicast_client_send(uint8_t cig_index, struct le_audio_encoded_audio enc_audio)
+int unicast_client_send(struct net_buf const *const audio_frame, uint8_t cig_index)
 {
 #if (CONFIG_BT_AUDIO_TX)
 	int ret;
@@ -1760,7 +1795,7 @@ int unicast_client_send(uint8_t cig_index, struct le_audio_encoded_audio enc_aud
 		return -ECANCELED;
 	}
 
-	ret = bt_le_audio_tx_send(tx, num_active_streams, enc_audio);
+	ret = bt_le_audio_tx_send(audio_frame, tx, num_active_streams);
 	if (ret) {
 		return ret;
 	}

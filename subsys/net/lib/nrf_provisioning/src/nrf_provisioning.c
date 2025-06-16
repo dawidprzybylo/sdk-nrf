@@ -177,18 +177,35 @@ static int nrf_provisioning_set(const char *key, size_t len_rd,
 	key_len = settings_name_next(key, &next);
 
 	if (strncmp(key, "interval-sec", key_len) == 0) {
-		len = read_cb(cb_arg, &time_str, sizeof(time_str));
-		if (len <= 0) {
-			LOG_ERR("Unable to read the timestamp of next provisioning");
-			memset(&time_str, 0, sizeof(time_str));
+		if (len_rd >= sizeof(time_str)) {
+			return -ENOMEM;
 		}
 
-		if (strlen(time_str) == 0) {
+		len = read_cb(cb_arg, &time_str, len_rd);
+		if (len < 0) {
+			LOG_ERR("Unable to read the timestamp of next provisioning");
+			return len;
+		}
+
+		time_str[len] = 0;
+
+		if (len == 0) {
 			nxt_provisioning = 0;
 			LOG_INF("Initial provisioning");
 		} else {
-			nxt_provisioning = (time_t) strtoll(time_str, NULL, 10);
-			LOG_DBG("Stored interval: \"%jd\"", nxt_provisioning);
+			errno = 0;
+			time_t interval = (time_t) strtoll(time_str, NULL, 0);
+
+			if (interval < 0 || errno != 0) {
+				LOG_ERR("Invalid interval value: %s", time_str);
+				return -EINVAL;
+			}
+
+			LOG_DBG("Stored interval: \"%jd\"", interval);
+			if (nxt_provisioning != interval) {
+				nxt_provisioning = interval;
+				reschedule = true;
+			}
 		}
 
 		return 0;
@@ -198,19 +215,21 @@ static int nrf_provisioning_set(const char *key, size_t len_rd,
 			return 0;
 		}
 
-		len = read_cb(cb_arg, latest_cmd_id,
-			NRF_PROVISIONING_CORRELATION_ID_SIZE);
-		if (len <= 0) {
-			LOG_INF("No provisioning information stored");
+		if (len_rd >= NRF_PROVISIONING_CORRELATION_ID_SIZE) {
+			return -ENOMEM;
+		}
+		memset(latest_cmd_id, 0, NRF_PROVISIONING_CORRELATION_ID_SIZE);
+		len = read_cb(cb_arg, latest_cmd_id, len_rd);
+		if (len < 0) {
+			return len;
 		}
 
-		if (strlen(latest_cmd_id) == 0) {
-			LOG_INF("Initial provisioning");
+		if (len == 0) {
+			LOG_INF("No provisioning information stored");
 		}
 
 		return 0;
 	}
-
 
 	return -ENOENT;
 }
@@ -475,7 +494,8 @@ int nrf_provisioning_schedule(void)
 		goto out;
 	}
 
-	if (now_s > deadline_s) {
+	if (now_s > deadline_s || reschedule) {
+
 		/* Provision now */
 		if (!nxt_provisioning && !deadline_s) {
 			deadline_s = now_s + CONFIG_NRF_PROVISIONING_INTERVAL_S;
@@ -498,7 +518,7 @@ out:
 	/* To even the load on server side */
 	retry_s += spread_s;
 
-	LOG_INF("Checking for provisioning commands in %llds seconds", retry_s);
+	LOG_INF("Checking for provisioning commands in %lld seconds", retry_s);
 	reschedule = false;
 
 	return retry_s;
@@ -508,7 +528,7 @@ static void commit_latest_cmd_id(void)
 {
 	int ret = settings_save_one(SETTINGS_STORAGE_PREFIX "/" NRF_PROVISIONING_CORRELATION_ID_KEY,
 		nrf_provisioning_codec_get_latest_cmd_id(),
-		strlen(nrf_provisioning_codec_get_latest_cmd_id()) + 1);
+		strlen(nrf_provisioning_codec_get_latest_cmd_id()));
 
 	if (ret) {
 		LOG_ERR("Unable to store key: %s; value: %s; err: %d",
@@ -521,6 +541,12 @@ static void commit_latest_cmd_id(void)
 
 void nrf_provisioning_set_interval(int interval)
 {
+
+	if (interval < 0) {
+		LOG_ERR("Invalid interval %d", interval);
+		return;
+	}
+
 	LOG_DBG("Provisioning interval set to %d", interval);
 
 	if (interval != nxt_provisioning) {
@@ -546,7 +572,7 @@ void nrf_provisioning_set_interval(int interval)
 		}
 
 		ret = settings_save_one(SETTINGS_STORAGE_PREFIX "/interval-sec",
-			time_str, strlen(time_str) + 1);
+			time_str, strlen(time_str));
 		if (ret) {
 			LOG_ERR("Unable to store interval, err: %d", ret);
 			return;
@@ -564,7 +590,7 @@ int nrf_provisioning_req(void)
 	k_mutex_unlock(&np_mtx);
 
 	while (true) {
-		backoff = 1; /* Backoff start interval */
+		backoff = CONFIG_NRF_PROVISIONING_INITIAL_BACKOFF; /* Backoff start interval */
 		settings_load_subtree(settings.name); /* Get the provisioning interval */
 
 		/* Reschedule as long as there's no network */
@@ -588,7 +614,12 @@ int nrf_provisioning_req(void)
 		}
 		dm.cb(NRF_PROVISIONING_EVENT_STOP, dm.user_data);
 
-		while (ret == -EBUSY) {
+		while (ret == -EBUSY || ret == -ETIMEDOUT) {
+			if (ret == -EBUSY) {
+				LOG_WRN("Busy, retrying in %d seconds", backoff);
+			} else {
+				LOG_WRN("Timeout, retrying in %d seconds", backoff);
+			}
 			/* Backoff */
 			k_condvar_wait(&np_cond, &np_mtx, K_SECONDS(backoff));
 			k_mutex_unlock(&np_mtx);
@@ -651,9 +682,6 @@ int nrf_provisioning_req(void)
 	return ret;
 }
 
-#define NRF_PROVISIONING_STACK_SIZE 3072
-#define NRF_PROVISIONING_PRIORITY 5
-
-K_THREAD_DEFINE(nrf_provisioning, NRF_PROVISIONING_STACK_SIZE,
+K_THREAD_DEFINE(nrf_provisioning, CONFIG_NRF_PROVISIONING_STACK_SIZE,
 		nrf_provisioning_req, NULL, NULL, NULL,
-		NRF_PROVISIONING_PRIORITY, 0, 0);
+		K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);

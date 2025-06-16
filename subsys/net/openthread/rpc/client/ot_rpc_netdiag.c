@@ -7,6 +7,7 @@
 #include <ot_rpc_client_common.h>
 #include <ot_rpc_ids.h>
 #include <ot_rpc_types.h>
+#include <ot_rpc_lock.h>
 #include <nrf_rpc/nrf_rpc_serialize.h>
 
 #include <openthread/netdiag.h>
@@ -20,6 +21,8 @@ static void *receive_diag_get_cb_context;
 
 void ot_rpc_decode_network_diag_tlv(struct nrf_rpc_cbor_ctx *ctx, otNetworkDiagTlv *aNetworkDiagTlv)
 {
+	uint8_t mode;
+
 	aNetworkDiagTlv->mType = nrf_rpc_decode_uint(ctx);
 
 	switch (aNetworkDiagTlv->mType) {
@@ -31,7 +34,7 @@ void ot_rpc_decode_network_diag_tlv(struct nrf_rpc_cbor_ctx *ctx, otNetworkDiagT
 		nrf_rpc_decode_buffer(ctx, aNetworkDiagTlv->mData.mEui64.m8, OT_EXT_ADDRESS_SIZE);
 		break;
 	case OT_NETWORK_DIAGNOSTIC_TLV_MODE:
-		uint8_t mode = nrf_rpc_decode_uint(ctx);
+		mode = nrf_rpc_decode_uint(ctx);
 
 		aNetworkDiagTlv->mData.mMode.mRxOnWhenIdle = (bool)(mode & BIT(0));
 		aNetworkDiagTlv->mData.mMode.mDeviceType = (bool)(mode & BIT(1));
@@ -232,10 +235,13 @@ static void ot_rpc_cmd_thread_send_diagnostic_get_cb(const struct nrf_rpc_group 
 		return;
 	}
 
+	ot_rpc_mutex_lock();
+
 	if (receive_diag_get_cb != NULL) {
 		receive_diag_get_cb(error, message, &message_info, receive_diag_get_cb_context);
 	}
 
+	ot_rpc_mutex_unlock();
 	nrf_rpc_rsp_send_void(group);
 }
 

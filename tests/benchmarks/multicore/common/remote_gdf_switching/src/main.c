@@ -9,6 +9,7 @@
 #include <zephyr/drivers/clock_control/nrf_clock_control.h>
 #include <zephyr/kernel.h>
 
+#define HOST_IS_READY	(1)
 #define REMOTE_IS_READY	(2)
 #define SHM_START_ADDR		(DT_REG_ADDR(DT_NODELABEL(cpuapp_cpurad_ipc_shm)))
 volatile static uint32_t *shared_var = (volatile uint32_t *) SHM_START_ADDR;
@@ -43,11 +44,22 @@ void set_global_domain_frequency(uint32_t freq)
 int main(void)
 {
 	uint32_t counter = 0;
+	int32_t sync_timeout = 100;
 
 	gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
 
+	printk("REMOTE starts");
+	while (*shared_var != HOST_IS_READY && sync_timeout > 0) {
+		k_msleep(1);
+		sys_cache_data_invd_range((void *) shared_var, sizeof(*shared_var));
+		printk("shared_var is: %u", *shared_var);
+		sync_timeout--;
+	}
+	printk("REMOTE found that HOST_IS_READY or sync_timeout: %d too low", sync_timeout);
 	*shared_var = REMOTE_IS_READY;
 	sys_cache_data_flush_range((void *) shared_var, sizeof(*shared_var));
+	printk("REMOTE wrote REMOTE_IS_READY: %u", *shared_var);
+	printk("REMOTE continues");
 	k_msleep(300);
 
 	while (1) {

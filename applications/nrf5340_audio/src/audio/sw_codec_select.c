@@ -7,6 +7,7 @@
 #include "sw_codec_select.h"
 
 #include <zephyr/kernel.h>
+#include <zephyr/bluetooth/audio/audio.h>
 #include <errno.h>
 #include <pcm_stream_channel_modifier.h>
 #include <sample_rate_converter.h>
@@ -83,19 +84,21 @@ bool sw_codec_is_initialized(void)
 	return m_config.initialized;
 }
 
-int sw_codec_encode(void *pcm_data, size_t pcm_size, uint8_t **encoded_data, size_t *encoded_size)
+int sw_codec_encode(struct net_buf *audio_frame)
 {
 	int ret;
 
 	/* Temp storage for split stereo PCM signal */
 	char pcm_data_mono_system_sample_rate[AUDIO_CH_NUM][PCM_NUM_BYTES_MONO] = {0};
 	/* Make sure we have enough space for two frames (stereo) */
-	static uint8_t m_encoded_data[ENC_MAX_FRAME_SIZE * AUDIO_CH_NUM];
+	uint8_t m_encoded_data[ENC_MAX_FRAME_SIZE * AUDIO_CH_NUM];
 
 	char pcm_data_mono_converted_buf[AUDIO_CH_NUM][PCM_NUM_BYTES_MONO] = {0};
 
 	size_t pcm_block_size_mono_system_sample_rate;
 	size_t pcm_block_size_mono;
+
+	struct audio_metadata *meta = net_buf_user_data(audio_frame);
 
 	if (!m_config.encoder.enabled) {
 		LOG_ERR("Encoder has not been initialized");
@@ -111,7 +114,8 @@ int sw_codec_encode(void *pcm_data, size_t pcm_size, uint8_t **encoded_data, siz
 		/* Since LC3 is a single channel codec, we must split the
 		 * stereo PCM stream
 		 */
-		ret = pscm_two_channel_split(pcm_data, pcm_size, CONFIG_AUDIO_BIT_DEPTH_BITS,
+		ret = pscm_two_channel_split(audio_frame->data, audio_frame->len,
+					     CONFIG_AUDIO_BIT_DEPTH_BITS,
 					     pcm_data_mono_system_sample_rate[AUDIO_CH_L],
 					     pcm_data_mono_system_sample_rate[AUDIO_CH_R],
 					     &pcm_block_size_mono_system_sample_rate);
@@ -142,6 +146,7 @@ int sw_codec_encode(void *pcm_data, size_t pcm_size, uint8_t **encoded_data, siz
 			if (ret) {
 				return ret;
 			}
+			meta->locations = BT_AUDIO_LOCATION_FRONT_LEFT;
 			break;
 		}
 		case SW_CODEC_STEREO: {
@@ -170,9 +175,10 @@ int sw_codec_encode(void *pcm_data, size_t pcm_size, uint8_t **encoded_data, siz
 			return -ENODEV;
 		}
 
-		*encoded_data = m_encoded_data;
-		*encoded_size = encoded_bytes_written;
+		meta->data_coding = LC3;
 
+		net_buf_remove_mem(audio_frame, audio_frame->len);
+		net_buf_add_mem(audio_frame, m_encoded_data, encoded_bytes_written);
 #endif /* (CONFIG_SW_CODEC_LC3) */
 		break;
 	}
@@ -184,8 +190,8 @@ int sw_codec_encode(void *pcm_data, size_t pcm_size, uint8_t **encoded_data, siz
 	return 0;
 }
 
-int sw_codec_decode(uint8_t const *const encoded_data, size_t encoded_size, bool bad_frame,
-		    void **decoded_data, size_t *decoded_size)
+int sw_codec_decode(struct net_buf const *const audio_frame, void **decoded_data,
+		    size_t *decoded_size)
 {
 	if (!m_config.decoder.enabled) {
 		LOG_ERR("Decoder has not been initialized");
@@ -203,6 +209,8 @@ int sw_codec_decode(uint8_t const *const encoded_data, size_t encoded_size, bool
 	size_t pcm_size_mono = 0;
 	size_t decoded_data_size = 0;
 
+	struct audio_metadata *meta = net_buf_user_data(audio_frame);
+
 	switch (m_config.sw_codec) {
 	case SW_CODEC_LC3: {
 #if (CONFIG_SW_CODEC_LC3)
@@ -210,14 +218,14 @@ int sw_codec_decode(uint8_t const *const encoded_data, size_t encoded_size, bool
 
 		switch (m_config.decoder.channel_mode) {
 		case SW_CODEC_MONO: {
-			if (bad_frame && IS_ENABLED(CONFIG_SW_CODEC_OVERRIDE_PLC)) {
+			if (meta->bad_data && IS_ENABLED(CONFIG_SW_CODEC_OVERRIDE_PLC)) {
 				memset(decoded_data_mono[AUDIO_CH_L], 0, PCM_NUM_BYTES_MONO);
 				decoded_data_size = PCM_NUM_BYTES_MONO;
 			} else {
 				ret = sw_codec_lc3_dec_run(
-					encoded_data, encoded_size, LC3_PCM_NUM_BYTES_MONO, 0,
-					decoded_data_mono[AUDIO_CH_L],
-					(uint16_t *)&decoded_data_size, bad_frame);
+					audio_frame->data, audio_frame->len, LC3_PCM_NUM_BYTES_MONO,
+					0, decoded_data_mono[AUDIO_CH_L],
+					(uint16_t *)&decoded_data_size, meta->bad_data);
 				if (ret) {
 					return ret;
 				}
@@ -248,26 +256,27 @@ int sw_codec_decode(uint8_t const *const encoded_data, size_t encoded_size, bool
 			break;
 		}
 		case SW_CODEC_STEREO: {
-			if (bad_frame && IS_ENABLED(CONFIG_SW_CODEC_OVERRIDE_PLC)) {
+			if (meta->bad_data && IS_ENABLED(CONFIG_SW_CODEC_OVERRIDE_PLC)) {
 				memset(decoded_data_mono[AUDIO_CH_L], 0, PCM_NUM_BYTES_MONO);
 				memset(decoded_data_mono[AUDIO_CH_R], 0, PCM_NUM_BYTES_MONO);
 				decoded_data_size = PCM_NUM_BYTES_MONO;
 			} else {
 				/* Decode left channel */
 				ret = sw_codec_lc3_dec_run(
-					encoded_data, encoded_size / 2, LC3_PCM_NUM_BYTES_MONO,
-					AUDIO_CH_L, decoded_data_mono[AUDIO_CH_L],
-					(uint16_t *)&decoded_data_size, bad_frame);
+					audio_frame->data, (audio_frame->len / 2),
+					LC3_PCM_NUM_BYTES_MONO, AUDIO_CH_L,
+					decoded_data_mono[AUDIO_CH_L],
+					(uint16_t *)&decoded_data_size, meta->bad_data);
 				if (ret) {
 					return ret;
 				}
 
 				/* Decode right channel */
 				ret = sw_codec_lc3_dec_run(
-					(encoded_data + (encoded_size / 2)), encoded_size / 2,
-					LC3_PCM_NUM_BYTES_MONO, AUDIO_CH_R,
+					(audio_frame->data + (audio_frame->len / 2)),
+					(audio_frame->len / 2), LC3_PCM_NUM_BYTES_MONO, AUDIO_CH_R,
 					decoded_data_mono[AUDIO_CH_R],
-					(uint16_t *)&decoded_data_size, bad_frame);
+					(uint16_t *)&decoded_data_size, meta->bad_data);
 				if (ret) {
 					return ret;
 				}

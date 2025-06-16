@@ -215,26 +215,46 @@ Programming with the QSPI XIP split image
 *****************************************
 
 Programming of the application is supported using the :ref:`standard procedure <programming>`.
-The standard procedure will program the firmware using the default nrfjprog configuration which, for QSPI, is PP4IO mode.
-
-.. note::
-      |nrfjprog_deprecation_note|
+The standard procedure programs the firmware using the default nRF Util configuration, which, for QSPI, is the PP4IO mode.
 
 Programming using a different SPI mode
 ======================================
 
-If you are using a different SPI mode on the QSPI interface, such as DSPI, you must use a custom :file:`Qspi.ini` file.
+If you are using a different SPI mode on the QSPI interface, such as DSPI, you must use a custom :file:`qspi_nrfutil.json` file.
 The following is an example for the Thingy:53, which supports DSPI and PP:
 
-.. literalinclude:: ../../../../samples/nrf5340/extxip_smp_svr/Qspi_thingy53.ini
+.. code-block:: json
+
+    {
+      "firmware_config": {
+        "peripheral": "QSPI"
+      },
+      "pins": {
+        "sck": 17,
+        "csn": 18,
+        "io0": 13,
+        "io1": 14,
+        "io2": 15,
+        "io3": 16
+      },
+      "flash_size": 8388608,
+      "sck_frequency": 8000000,
+      "address_mode": "MODE24BIT",
+      "readoc": "READ2IO",
+      "writeoc": "PP",
+      "pp_size": "PPSIZE256",
+      "sck_delay": 128,
+      "rx_delay": 2,
+      "page_size": 4096
+    }
 
 To use this file when programming, add the following lines to the application's :file:`CMakeLists.txt` file before the ``find_package()`` line:
 
 .. code-block:: cmake
 
     macro(app_set_runner_args)
-      # Replace with the filename of your ini file
-      board_runner_args(nrfjprog "--qspiini=${CMAKE_CURRENT_SOURCE_DIR}/Qspi_thingy53.ini")
+      # Replace with the filename of your json file
+      board_runner_args(nrfutil "--ext-mem-config-file=${CMAKE_CURRENT_SOURCE_DIR}/qspi_nrfutil.json")
     endmacro()
 
 This will enable programming the target board successfully when using ``west flash``.

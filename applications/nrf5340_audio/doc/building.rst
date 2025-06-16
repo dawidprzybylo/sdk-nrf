@@ -11,11 +11,9 @@ This nRF5340 Audio application source files can be found in their respective fol
 
 You can build and program the applications in one of the following ways:
 
-* :ref:`nrf53_audio_app_building_script`.
-  This is the suggested method.
+* :ref:`nrf53_audio_app_building_script` - This is the suggested method.
   Using this method allows you to build and program multiple development kits at the same time.
-* :ref:`nrf53_audio_app_building_standard`.
-  Using this method requires building and programming each development kit separately.
+* :ref:`nrf53_audio_app_building_standard` - Using this method requires building and programming each development kit separately.
 
 .. important::
    Building and programming using the |nRFVSC| is currently not supported.
@@ -63,11 +61,11 @@ This is how the file looks by default:
 
 When preparing the JSON file, update the following fields:
 
-* ``nrf5340_audio_dk_snr`` -- This field lists the SEGGER serial number.
+* ``nrf5340_audio_dk_snr`` - This field lists the SEGGER serial number.
   You can check this ten-digit number on the sticker on the nRF5340 Audio development kit.
   Alternatively, connect the development kit to your PC and run ``nrfutil device list`` in a command window to print the SEGGER serial number of all connected kits.
-* ``nrf5340_audio_dk_dev`` -- This field assigns the specific nRF5340 Audio development kit to be ``headset`` or ``gateway``.
-* ``channel`` -- This field is valid only for headsets.
+* ``nrf5340_audio_dk_dev`` - This field assigns the specific nRF5340 Audio development kit to be ``headset`` or ``gateway``.
+* ``channel`` - This field is valid only for headsets.
   It sets the channels on which the headset is meant to work.
   When no channel is set, the headset is programmed as a left channel one.
 
@@ -128,8 +126,8 @@ Script parameters for programming
 The script can program the build files as part of the same `python buildprog.py` command used for building.
 Use one of the following programming parameters:
 
-* Programming (``-p`` parameter) -- If you run the ``buildprog`` script with this parameter, you can program one or both of the cores after building the files.
-* Sequential programming (``-s`` parameter) -- If you encounter problems while programming, include this parameter alongside other parameters to program sequentially.
+* Programming (``-p`` parameter) - If you run the ``buildprog`` script with this parameter, you can program one or both of the cores after building the files.
+* Sequential programming (``-s`` parameter) - If you encounter problems while programming, include this parameter alongside other parameters to program sequentially.
 
 .. note::
     The development kits are programmed according to the serial numbers set in the JSON file.
@@ -263,7 +261,7 @@ Complete the following steps to build the application:
 
 1. Choose the combination of build flags:
 
-   a. Choose the device type by using one of the following :ref:`CMake options for extra Kconfig fragments <cmake_options>`:
+   a. Choose the configuration file for the device selected by using one of the following options:
 
       * For unicast headset: ``-DEXTRA_CONF_FILE=".\unicast_server\overlay-unicast_server.conf"``
       * For unicast gateway: ``-DEXTRA_CONF_FILE=".\unicast_client\overlay-unicast_client.conf"``
@@ -282,7 +280,7 @@ Complete the following steps to build the application:
 
       west build -b nrf5340_audio_dk/nrf5340/cpuapp --pristine -- -DEXTRA_CONF_FILE=".\unicast_server\overlay-unicast_server.conf" -DFILE_SUFFIX=release
 
-   This command creates the build files for headset device directly in the :file:`build` directory.
+   This command creates the build files for a unicast headset device directly in the :file:`build` directory.
    What this means is that you cannot create build files for all devices you want to program, because the subsequent commands will overwrite the files in the :file:`build` directory.
 
    To work around this standard west behavior, you can add the ``-d`` parameter to the ``west`` command to specify a custom build folder for each device.

@@ -333,7 +333,7 @@ The following configuration files are provided:
 
 * :file:`overlay-ppp-without-cmux.overlay` - Devicetree overlay that configures the UART to be used by PPP.
   This configuration file should be included when building SLM with PPP and without CMUX, in addition to :file:`overlay-ppp.conf`.
-  It can be customized to fit your configuration (UART, baud rate, and so on).
+  It can be customized to fit your configuration, such as UART settings, baud rate, and flow control.
   By default, it sets the baud rate of the PPP UART to 1 000 000.
 
 * :file:`overlay-memfault.conf` - Configuration file that enables `Memfault`_.
@@ -559,31 +559,58 @@ To connect with an external MCU using UART_2, change the configuration files for
              pinctrl-names = "default", "sleep";
           };
 
-The following table shows how to connect an nRF52 Series development kit to an nRF91 Series development kit to be able to communicate through UART:
+The following table shows how to connect selected development kit to an nRF91 Series development kit to be able to communicate through UART:
 
-.. list-table::
-   :align: center
-   :header-rows: 1
+.. tabs::
 
-   * - nRF52 Series DK
-     - nRF91 Series DK
-   * - UART TX P0.6
-     - UART RX P0.11
-   * - UART RX P0.8
-     - UART TX P0.10
-   * - UART CTS P0.7
-     - UART RTS P0.12
-   * - UART RTS P0.5
-     - UART CTS P0.13
-   * - GPIO OUT P0.27
-     - GPIO IN P0.31
-   * - GPIO IN P0.26
-     - GPIO OUT P0.30
+   .. group-tab:: nRF52 DK
+
+      .. list-table::
+         :header-rows: 1
+
+         * - nRF52 Series DK
+           - nRF91 Series DK
+         * - UART TX P1.02
+           - UART RX P0.11
+         * - UART RX P1.01
+           - UART TX P0.10
+         * - UART CTS P1.07
+           - UART RTS P0.12
+         * - UART RTS P1.06
+           - UART CTS P0.13
+         * - GPIO OUT P0.11
+           - GPIO IN P0.31
+         * - GPIO IN P0.13
+           - GPIO OUT P0.30
+         * - GPIO GND
+           - GPIO GND
+
+   .. group-tab:: nRF53 DK
+
+      .. list-table::
+         :header-rows: 1
+
+         * - nRF53 Series DK
+           - nRF91 Series DK
+         * - UART TX P1.04
+           - UART RX P0.11
+         * - UART RX P1.05
+           - UART TX P0.10
+         * - UART CTS P1.07
+           - UART RTS P0.12
+         * - UART RTS P1.06
+           - UART CTS P0.13
+         * - GPIO OUT P0.23
+           - GPIO IN P0.31
+         * - GPIO IN P0.28
+           - GPIO OUT P0.30
+         * - GPIO GND
+           - GPIO GND
 
 Use the following UART devices:
 
-* nRF52840 or nRF52832 - UART0
-* nRF9160 or nRF91x1 - UART2
+* nRF52 or nRF53 Series DK - UART0
+* nRF91 Series DK - UART2
 
 Use the following UART configuration:
 
@@ -594,8 +621,10 @@ Use the following UART configuration:
 
 .. note::
    The GPIO output level on the nRF91 Series device side must be 3 V.
-   You can set the VDD voltage with the **VDD IO** switch (**SW9**).
-   See the `VDD supply rail section in the nRF9160 DK User Guide`_ for more information related to nRF9160 DK.
+
+   * For nRF91x1 DK, you can set the VDD voltage with the `Board Configurator app`_.
+   * For nRF9160 DK, you can set the VDD voltage with the **VDD IO** switch (**SW9**).
+     See the `VDD supply rail section in the nRF9160 DK User Guide`_ for more information related to nRF9160 DK.
 
 .. _slm_connecting_thingy91:
 
@@ -642,7 +671,13 @@ If you have an nRF52 Series DK running a client application, you can also use th
 #. Observe that the development kit sends a ``Ready\r\n`` message on UART.
 #. Send AT commands and observe the responses from the development kit.
 
-   See :ref:`slm_testing` for typical test cases.
+See :ref:`slm_testing` for typical test cases.
+
+.. note::
+
+   If the initialization of SLM fails, the application sends an ``INIT ERROR\r\n`` message on UART if it has managed to enable UART.
+   See the logs for more information about the error.
+   The logs are written to RTT by default.
 
 .. _slm_carrier_library_support:
 

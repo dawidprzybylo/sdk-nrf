@@ -11,7 +11,7 @@ config CRACEN_HW_VERSION_BASE
 	def_bool SOC_SERIES_NRF54HX || SOC_NRF54L15 || SOC_NRF54L10 || SOC_NRF54L05
 
 config CRACEN_HW_VERSION_LITE
-	def_bool SOC_NRF54L20 || SOC_NRF54L09
+	def_bool SOC_NRF54LM20A || SOC_NRF54LV10A
 
 # Configure CRACEN_LOG_LEVEL
 module = CRACEN
@@ -37,6 +37,12 @@ config CRACEN_LIB_KMU
 	help
 	  The CRACEN KMU library.
 
+config CRACEN_IKG
+	bool "Enable CRACEN IKG"
+	default y
+	help
+	  Enable the Cracen Isolated Key Generator.
+
 config CRACEN_IKG_SEED_LOAD
 	bool "Load the CRACEN IKG seed"
 	depends on CRACEN_LIB_KMU
@@ -56,6 +62,14 @@ config CRACEN_IKG_SEED_KMU_SLOT
 	  the one defined here and the two subsequent ones.
 	  This defines the KMU slot (along with the two following it) to which
 	  the IKG seed is provisioned and that is pushed when loading the IKG seed.
+
+config CRACEN_USE_INTERRUPTS
+	bool "Use cracen with interrupts"
+	default y
+	help
+	  Run CRACEN using supported interrupts.
+	  If this is turned off CRACEN uses active polling instead,
+	  which may have an impact on performance.
 
 rsource 'psa_driver.Kconfig'
 

@@ -39,6 +39,7 @@ LOG_MODULE_REGISTER(nrf_provisioning_codec, CONFIG_NRF_PROVISIONING_LOG_LEVEL);
 	(&((ofd)->rsps.responses_response_m[(ofd)->rsps.responses_response_m_count++]))
 
 #define AT_RESP_MAX_SIZE 4096
+#define KEYGEN_BUFFER_SIZE 1024
 
 static struct nrf_provisioning_mm_change mm;
 
@@ -266,17 +267,34 @@ int filter_cme_error(struct command *cmd, int cme_error)
 	return filtered ? 0 : cme_error;
 }
 
+static size_t check_at_cmd(char *at_buff, bool *clear_tag, int *sec_tag, int *type)
+{
+	/* Check if the command is a keygen command */
+	if (sscanf(at_buff, "AT%%KEYGEN=%d,%d,%*s", sec_tag, type) == 2) {
+		LOG_DBG("Keygen: sec_tag %d, type %d", *sec_tag, *type);
+		*clear_tag = true;
+		return KEYGEN_BUFFER_SIZE;
+	}
+
+	return CONFIG_NRF_PROVISIONING_CODEC_RX_SZ_START;
+}
+
 static int exec_at_cmd(struct command *cmd_req, struct cdc_out_fmt_data *out)
 {
 	int ret;
 	char *resp;
-	size_t resp_sz = CONFIG_NRF_PROVISIONING_CODEC_RX_SZ_START;
+	size_t resp_sz;
+	int sec_tag;
+	int type;
+	bool clear_tag = false;
 
 	ret = form_at_str(cmd_req, out->at_buff, out->at_buff_sz);
 	if (ret < 0) {
 		resp = NULL;
 		goto out;
 	}
+
+	resp_sz = check_at_cmd(out->at_buff, &clear_tag, &sec_tag, &type);
 
 	while (true) {
 		resp = k_malloc(resp_sz);
@@ -285,26 +303,24 @@ static int exec_at_cmd(struct command *cmd_req, struct cdc_out_fmt_data *out)
 			return -ENOMEM;
 		}
 		memset(resp, 0, resp_sz);
-
 		LOG_DBG("command: \"%s\", input buff len: %d", out->at_buff, resp_sz);
 		ret = nrf_provisioning_at_cmd(resp, resp_sz, out->at_buff);
 
 		if (ret == -E2BIG) {
-			int tag = 0;
-			int type = 0;
-
 			LOG_DBG("Buffer too small for AT response, retrying");
 			k_free(resp);
 			resp = NULL;
-			if (sscanf(out->at_buff, "AT%%KEYGEN=%d,%d,%*s", &tag, &type) == 2) {
-				LOG_DBG("Clear sec_tag %d, type %d", tag, type);
+
+			if (clear_tag) {
+				LOG_DBG("Clear sec_tag %d, type %d", sec_tag, type);
 				int err;
 
-				err = nrf_provisioning_at_del_credential(tag, type);
+				err = nrf_provisioning_at_del_credential(sec_tag, type);
 				if (err < 0) {
-					LOG_ERR("AT cmd failed, error: %d", err);
+					LOG_ERR("Failed to clear sec_tag, error: %d", err);
 				}
 			}
+
 			resp_sz *= 2; /* Previous size wasn't sufficient */
 			if (resp_sz > AT_RESP_MAX_SIZE) {
 				LOG_ERR("Key or CSR too big");
@@ -350,10 +366,8 @@ static int write_config(struct command *cmd_req, struct cdc_out_fmt_data *out)
 {
 	struct config *aconf = &cmd_req->command_union_config_m;
 	int max_key_sz = 1;
-	int max_value_sz = 1;
 	struct properties_tstrtstr *pair;
 	char *key;
-	char *value = NULL;
 	int ret = 0;
 
 	char *resp = NULL;
@@ -364,17 +378,10 @@ static int write_config(struct command *cmd_req, struct cdc_out_fmt_data *out)
 		pair = &aconf->properties_tstrtstr[i];
 
 		max_key_sz = MAX(max_key_sz, pair->config_properties_tstrtstr_key.len + 1);
-		max_value_sz = MAX(max_value_sz, pair->properties_tstrtstr.len + 1);
 	}
 
 	key = k_malloc(max_key_sz);
 	if (!key) {
-		ret = -ENOMEM;
-		goto exit;
-	}
-
-	value = k_malloc(max_value_sz);
-	if (!value) {
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -393,25 +400,22 @@ static int write_config(struct command *cmd_req, struct cdc_out_fmt_data *out)
 		ret = charseq2cstr(key, &pair->config_properties_tstrtstr_key, max_key_sz);
 		if (ret < 0) {
 			LOG_WRN("Unable to store key: %s; err: %d", key, ret);
-			snprintk(resp, resp_sz, "key [%d](0-indexed) too big", i);
+			snprintk(resp, resp_sz, "Key [%d](0-indexed) too big", i);
 			goto exit;
 		}
 
-		ret = charseq2cstr(value, &pair->properties_tstrtstr, max_value_sz);
-		if (ret < 0) {
-			LOG_WRN("Unable to store value: %s; err: %d", value, ret);
-			snprintk(resp, resp_sz, "value [%d](0-indexed) too big", i);
-			goto exit;
-		}
-
-		ret = settings_save_one(key, value, strlen(value)+1);
+		ret = settings_save_one(key, pair->properties_tstrtstr.value,
+					pair->properties_tstrtstr.len);
 		if (ret) {
-			snprintk(resp, resp_sz,
-				"unable to store [%d](0-indexed) key-value-pair", i);
-			LOG_WRN("Unable to store key: %s; value: %s; err: %d", key, value, ret);
+			snprintk(resp, resp_sz, "Unable to store [%d](0-indexed) key-value-pair",
+				 i);
+			LOG_WRN("Unable to store key: %s, err: %d", key, ret);
+			LOG_HEXDUMP_WRN(pair->properties_tstrtstr.value,
+					pair->properties_tstrtstr.len, "Value");
 			goto exit;
 		}
-		LOG_DBG("Stored key: \"%s\"; value: \"%s\"", key, value);
+		LOG_HEXDUMP_DBG(pair->properties_tstrtstr.value, pair->properties_tstrtstr.len,
+				key);
 	}
 
 	/* No error to report */
@@ -421,9 +425,6 @@ static int write_config(struct command *cmd_req, struct cdc_out_fmt_data *out)
 exit:
 	if (key) {
 		k_free(key);
-	}
-	if (value) {
-		k_free(value);
 	}
 
 	/* Keeps track of response messages to be freed once the whole responses request is send */
@@ -476,7 +477,7 @@ int nrf_provisioning_codec_process_commands(void)
 		ret = -EINVAL;
 		return ret;
 	}
-	LOG_HEXDUMP_DBG(cctx->ipkt, cctx->ipkt_sz, "command response: ");
+	LOG_HEXDUMP_DBG(cctx->ipkt, cctx->ipkt_sz, "received commands: ");
 
 	mret = lte_lc_func_mode_get(&orig);
 	if (mret < 0) {
@@ -552,7 +553,6 @@ stop_provisioning:
 	}
 
 	/* Encoded size will replace max size */
-	LOG_DBG("Payload %p size %d", cctx->opkt, cctx->opkt_sz);
 	ret = cbor_encode_responses(cctx->opkt, cctx->opkt_sz,
 				    CDC_OFMT_RESPONSES_GET(cctx),
 				    CDC_OPKT_SZ_PTR(cctx));

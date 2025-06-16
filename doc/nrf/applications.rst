@@ -12,6 +12,12 @@ You can also run them on different hardware like a generic development kit, but 
 
 If you want to list applications available for one or more specific boards, `use the nRF Connect for Visual Studio Code extension to filter them <Browse samples_>`_.
 
+Applications are also available through the `nRF Connect SDK Add-ons`_, a curated collection of supplementary |NCS| components designed to extend the functionality of the |NCS| and provide specific application use cases.
+
+`Asset Tracker Template <Asset Tracker Template_>`_, a reference template recommended for nRF91 Series asset tracking applications, is an example of an add-on.
+
+The following lists the |NCS| applications:
+
 .. toctree::
    :maxdepth: 1
    :glob:
@@ -23,6 +29,6 @@ If you want to list applications available for one or more specific boards, `use
    ../../applications/nrf5340_audio/index
    ../../applications/nrf_desktop/README
    ../../applications/machine_learning/README
-   ../../applications/sdp/gpio/README
+   ../../applications/hpf/hpf
    ../../applications/serial_lte_modem/README
    ../../applications/matter_weather_station/README

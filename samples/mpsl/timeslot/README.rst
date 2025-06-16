@@ -17,8 +17,8 @@ The sample supports any one of the following development kits:
 .. table-from-sample-yaml::
 
 .. note::
-   For the nRF5340 DK, this sample is only supported on the network core (``nrf5340dk_nrf5340_cpunet``), and the :ref:`nrf5340_empty_app_core` sample must be programmed to the application core.
-   For the nRF54H20 DK, this sample is only supported on the radio core (``nrf54h20dk_nrf4h20_cpurad``).
+   For the nRF5340 DK, this sample is only supported on the network core (``nrf5340dk/nrf5340/cpunet``), and the :ref:`nrf5340_empty_app_core` sample must be programmed to the application core.
+   For the nRF54H20 DK, this sample is only supported on the radio core (``nrf54h20dk/nrf4h20/cpurad``).
 
 Overview
 ********
@@ -28,8 +28,8 @@ The sample opens a timeslot session and starts requesting timeslots when a key i
 * If ``a`` is pressed, the callback for the first timeslot requests a new timeslot.
 * If ``b`` is pressed, the callback for the first timeslot ends the timeslot.
 
-The first timeslot is always of type "earliest".
-Any following timeslots are of type "normal".
+The first timeslot is always of type ``earliest``.
+Any following timeslots are of type ``normal``.
 In each timeslot callback, the signal type of the callback is posted to a message queue.
 Upon reception of the timeslot start signal, ``mpsl timer0`` is configured to be triggered before the timeslot ends.
 A separate thread reads the message queue and prints the timeslot signal type.
@@ -49,9 +49,6 @@ Building and running
 .. |sample path| replace:: :file:`samples/mpsl/timeslot`
 
 .. include:: /includes/build_and_run.txt
-
-.. note::
-   |54H_engb_2_8|
 
 Testing
 =======

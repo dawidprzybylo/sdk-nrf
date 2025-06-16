@@ -96,7 +96,7 @@ The nRF Wi-Fi driver provides the following software configurations to fine-tune
        The coalescing greatly improves the throughput for small frames or under high traffic load.
      - Performance tuning and Memory savings
      - This specifies the maximum number of frames that can be coalesced into a single Wi-Fi frame.
-       More frames imply more coalescing opportunities but can add latency to the TX path as we wait for more frames to arrive.
+       More frames imply more coalescing opportunities but can add latency to the TX path as more frames are expected to arrive.
    * - :kconfig:option:`CONFIG_NRF70_RX_NUM_BUFS`
      - ``1`` to ``Unlimited`` (based on available memory in nRF70 Series device)
      - Number of RX buffers
@@ -187,108 +187,44 @@ The nRF Wi-Fi driver can be used in the following profiles (not an exhaustive li
      - ``N/A``
    * - :abbr:`STA (Station)` mode
      - IoT devices
-     - ``CONFIG_WIFI_NM_WPA_SUPPLICANT=y``
-       ``CONFIG_NRF70_AP_MODE=n``
-       ``CONFIG_NRF70_P2P_MODE=n``
-       ``CONFIG_NET_PKT_TX_COUNT=6``
-       ``CONFIG_NET_PKT_RX_COUNT=6``
-       ``CONFIG_NET_BUF_TX_COUNT=12``
-       ``CONFIG_NET_BUF_RX_COUNT=6``
-       ``CONFIG_NRF70_RX_NUM_BUFS=6``
-       ``CONFIG_NET_BUF_DATA_SIZE=800``
-       ``CONFIG_HEAP_MEM_POOL_SIZE=230000``
-       ``CONFIG_SPEED_OPTIMIZATIONS=y``
-       ``CONFIG_NRF70_UTIL=n``
-       ``CONFIG_NRF70_MAX_TX_AGGREGATION=1``
-       ``CONFIG_NRF70_MAX_TX_TOKENS=5``
+     - `overlay-iot-devices.conf`_
      - IoT devices
-     - ``TCP-TX: 5.2 Mbps``
-       ``TCP-RX: 3.4 Mbps``
+     - ``TCP-TX: 6.1 Mbps``
+       ``TCP-RX: 2.1 Mbps``
        ``UDP-TX: 5.5 Mbps``
-       ``UDP-RX: 4.1 Mbps``
+       ``UDP-RX: 15.1 Mbps``
    * - :abbr:`STA (Station)` mode
      - Memory optimized :abbr:`STA (Station)` mode
-     - ``CONFIG_WIFI_NM_WPA_SUPPLICANT=y``
-       ``CONFIG_NRF70_AP_MODE=n``
-       ``CONFIG_NRF70_P2P_MODE=n``
-       ``CONFIG_NET_PKT_TX_COUNT=6``
-       ``CONFIG_NET_PKT_RX_COUNT=6``
-       ``CONFIG_NET_BUF_TX_COUNT=12``
-       ``CONFIG_NET_BUF_RX_COUNT=6``
-       ``CONFIG_NRF70_RX_NUM_BUFS=6``
-       ``CONFIG_NET_BUF_DATA_SIZE=500``
-       ``CONFIG_HEAP_MEM_POOL_SIZE=230000``
-       ``CONFIG_SPEED_OPTIMIZATIONS=y``
-       ``CONFIG_NRF70_UTIL=n``
-       ``CONFIG_NRF70_MAX_TX_AGGREGATION=1``
-       ``CONFIG_NRF70_MAX_TX_TOKENS=5``
+     - `overlay-memory-optimized.conf`_
      - Sensors with low data requirements
-     - ``TCP-TX: 0.3 Mbps``
-       ``TCP-RX: 1.5 Mbps``
-       ``UDP-TX: 5.1 Mbps``
-       ``UDP-RX: 0.5 Mbps``
+     - ``TCP-TX: 4.7 Mbps``
+       ``TCP-RX: 5.7 Mbps``
+       ``UDP-TX: 5.5 Mbps``
+       ``UDP-RX: 15.2 Mbps``
    * - :abbr:`STA (Station)` mode
      - High performance :abbr:`STA (Station)` mode
-     - ``CONFIG_WIFI_NM_WPA_SUPPLICANT=y``
-       ``CONFIG_NRF70_AP_MODE=n``
-       ``CONFIG_NRF70_P2P_MODE=n``
-       ``CONFIG_NET_PKT_TX_COUNT=30``
-       ``CONFIG_NET_PKT_RX_COUNT=30``
-       ``CONFIG_NET_BUF_TX_COUNT=60``
-       ``CONFIG_NET_BUF_RX_COUNT=30``
-       ``CONFIG_NET_BUF_DATA_SIZE=1100``
-       ``CONFIG_HEAP_MEM_POOL_SIZE=230000``
-       ``CONFIG_SPEED_OPTIMIZATIONS=y``
-       ``CONFIG_NRF70_UTIL=n``
-       ``CONFIG_NRF70_MAX_TX_AGGREGATION=9``
-       ``CONFIG_NRF70_MAX_TX_TOKENS=12``
+     - `overlay-high-performance.conf`_
      - High data rate IoT devices
-     - ``TCP-TX: 14.2 Mbps``
-       ``TCP-RX: 7.4  Mbps``
-       ``UDP-TX: 26.2 Mbps``
-       ``UDP-RX: 12.4 Mbps``
+     - ``TCP-TX: 7.3 Mbps``
+       ``TCP-RX: 9.4 Mbps``
+       ``UDP-TX: 10.6 Mbps``
+       ``UDP-RX: 16.6 Mbps``
    * - :abbr:`STA (Station)` mode
      - TX prioritized :abbr:`STA (Station)` mode
-     - ``CONFIG_WIFI_NM_WPA_SUPPLICANT=y``
-       ``CONFIG_NRF70_AP_MODE=n``
-       ``CONFIG_NRF70_P2P_MODE=n``
-       ``CONFIG_NET_PKT_TX_COUNT=32``
-       ``CONFIG_NET_PKT_RX_COUNT=10``
-       ``CONFIG_NET_BUF_TX_COUNT=64``
-       ``CONFIG_NET_BUF_RX_COUNT=10``
-       ``CONFIG_NRF70_RX_NUM_BUFS=10``
-       ``CONFIG_NET_BUF_DATA_SIZE=1100``
-       ``CONFIG_HEAP_MEM_POOL_SIZE=230000``
-       ``CONFIG_SPEED_OPTIMIZATIONS=y``
-       ``CONFIG_NRF70_UTIL=n``
-       ``CONFIG_NRF70_MAX_TX_AGGREGATION=9``
-       ``CONFIG_NRF70_MAX_TX_TOKENS=12``
+     - `overlay-tx-prio.conf`_
      - Sensors with high data rate
-     - ``TCP-TX: 9.2  Mbps``
-       ``TCP-RX: 3.6  Mbps``
-       ``UDP-TX: 26.6 Mbps``
-       ``UDP-RX: 12.8 Mbps``
+     - ``TCP-TX: 6.9 Mbps``
+       ``TCP-RX: 6.3 Mbps``
+       ``UDP-TX: 10.7 Mbps``
+       ``UDP-RX: 15.9 Mbps``
    * - :abbr:`STA (Station)` mode
      - RX prioritized :abbr:`STA (Station)` mode
-     - ``CONFIG_WIFI_NM_WPA_SUPPLICANT=y``
-       ``CONFIG_NRF70_AP_MODE=n``
-       ``CONFIG_NRF70_P2P_MODE=n``
-       ``CONFIG_NET_PKT_TX_COUNT=5``
-       ``CONFIG_NET_PKT_RX_COUNT=64``
-       ``CONFIG_NET_BUF_TX_COUNT=10``
-       ``CONFIG_NET_BUF_RX_COUNT=64``
-       ``CONFIG_NRF70_RX_NUM_BUFS=64``
-       ``CONFIG_NET_BUF_DATA_SIZE=1100``
-       ``CONFIG_HEAP_MEM_POOL_SIZE=230000``
-       ``CONFIG_SPEED_OPTIMIZATIONS=y``
-       ``CONFIG_NRF70_UTIL=n``
-       ``CONFIG_NRF70_MAX_TX_AGGREGATION=2``
-       ``CONFIG_NRF70_MAX_TX_TOKENS=5``
+     - `overlay-rx-prio.conf`_
      - Display devices streaming data
-     - ``TCP-TX: 5.3  Mbps``
-       ``TCP-RX: 7.9  Mbps``
-       ``UDP-TX: 8.6  Mbps``
-       ``UDP-RX: 12.7 Mbps``
+     - ``TCP-TX: 5.6 Mbps``
+       ``TCP-RX: 6.9 Mbps``
+       ``UDP-TX: 8.3 Mbps``
+       ``UDP-RX: 18.6 Mbps``
 
 .. note::
    The measured throughputs, as shown in the table above, are based on tests conducted using the nRF7002 DK.

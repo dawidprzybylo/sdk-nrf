@@ -216,17 +216,21 @@ void AppTask::UpdateClusterStateHandler(const BoltLockManager::StateData &stateD
 
 		Nullable<uint16_t> userId;
 		Nullable<List<const LockOpCredentials>> credentials;
+#ifdef CONFIG_LOCK_PASS_CREDENTIALS_TO_SET_LOCK_STATE
 		List<const LockOpCredentials> credentialList;
+#endif
 
 		if (!stateData.mValidatePINResult.IsNull()) {
 			userId = { stateData.mValidatePINResult.Value().mUserId };
 
+#ifdef CONFIG_LOCK_PASS_CREDENTIALS_TO_SET_LOCK_STATE
 			/* `DoorLockServer::SetLockState` exptects list of `LockOpCredentials`,
 			   however in case of PIN validation it makes no sense to have more than one
 			   credential corresponding to validation result. For simplicity we wrap single
 			   credential in list here. */
 			credentialList = { &stateData.mValidatePINResult.Value().mCredential, 1 };
 			credentials = { credentialList };
+#endif
 		}
 
 		if (!DoorLockServer::Instance().SetLockState(kLockEndpointId, newLockState, stateData.mSource, userId,

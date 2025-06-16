@@ -15,12 +15,12 @@ Overview
 The sample application tests throughput of the IPC service with available backends.
 Currently, the sample supports the following backends:
 
-* :ref:`zephyr:nrf5340dk_nrf5340` board:
+* :zephyr:board:`nrf5340dk` board:
 
   * `OpenAMP`_ library
   * :ref:`zephyr:ipc_service_backend_icmsg`
 
-* :ref:`zephyr:nrf54h20dk_nrf54h20` board:
+* :zephyr:board:`nrf54h20dk` board:
 
   * :ref:`zephyr:ipc_service_backend_icbmsg`
 
@@ -110,9 +110,6 @@ To build the sample to test IPC between the application and PPR core using the :
    west build -p -b nrf54h20dk/nrf54h20/cpuapp -T sample.ipc.ipc_service.nrf54h20dk_cpuapp_cpuppr_icmsg .
 
 .. include:: /includes/nRF54H20_erase_UICR.txt
-
-.. note::
-   |54H_engb_2_8|
 
 Testing
 =======

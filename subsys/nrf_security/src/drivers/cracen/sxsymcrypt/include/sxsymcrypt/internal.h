@@ -21,6 +21,8 @@ extern "C" {
 #define SX_BLKCIPHER_PRIV_SZ (16)
 #define SX_AEAD_PRIV_SZ	     (70)
 
+#define SX_MAX(p, q) ((p >= q) ? p : q)
+
 /** Mode Register value for context loading */
 #define BA417_MODEID_CTX_LOAD (1u << 5)
 /** Mode Register value for context saving */
@@ -91,6 +93,7 @@ struct sxaead {
 	size_t totalaadsz;
 	uint8_t tagsz;
 	bool is_in_ctx;
+	bool has_countermeasures;
 	uint8_t ctxsz;
 	const struct sxkeyref *key;
 	struct sx_dmactl dma;

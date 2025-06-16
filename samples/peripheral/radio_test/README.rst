@@ -110,7 +110,7 @@ User interface
      - Start channel for the sweep or the channel for the constant carrier (in MHz, as difference from 2400 MHz).
    * - start_duty_cycle_modulated_tx
      - <duty_cycle>
-     - Duty cycle in percent (two decimal digits, between 01 and 90).
+     - Duty cycle as a percentage (two decimal digits, ranging from 01 to 90).
    * - start_rx
      - <packet_num>
      - Start RX (continuous RX mode is used if no argument is provided).
@@ -195,9 +195,6 @@ Building and running
 .. include:: /includes/build_and_run.txt
 
 .. include:: /includes/nRF54H20_erase_UICR.txt
-
-.. note::
-   |54H_engb_2_8|
 
 .. note::
    On the nRF5340 or nRF7002 development kit, the Radio Test sample requires the :ref:`nrf5340_remote_shell` sample on the application core.

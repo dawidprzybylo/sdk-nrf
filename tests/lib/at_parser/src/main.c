@@ -810,15 +810,22 @@ ZTEST(at_parser, test_at_parser_uint16_get_eopnotsupp)
 	/* Trying to parse notification string as integer. */
 	ret = at_parser_uint16_get(&parser, 0, &val);
 	zassert_equal(ret, -EOPNOTSUPP);
+}
 
-	const char *str2 = "+NOTIF: 1,,3";
+ZTEST(at_parser, test_at_parser_uint16_get_enodata)
+{
+	int ret;
+	uint16_t val;
+	struct at_parser parser;
 
-	ret = at_parser_init(&parser, str2);
+	const char *str1 = "+NOTIF: 1,,3";
+
+	ret = at_parser_init(&parser, str1);
 	zassert_ok(ret);
 
 	/* Trying to parse an empty subparameter as integer. */
 	ret = at_parser_uint16_get(&parser, 2, &val);
-	zassert_equal(ret, -EOPNOTSUPP);
+	zassert_equal(ret, -ENODATA);
 }
 
 ZTEST(at_parser, test_at_parser_uint16_get_ebadmsg)
@@ -951,15 +958,22 @@ ZTEST(at_parser, test_at_parser_int16_get_eopnotsupp)
 	/* Trying to parse notification string as integer. */
 	ret = at_parser_int16_get(&parser, 0, &val);
 	zassert_equal(ret, -EOPNOTSUPP);
+}
 
-	const char *str2 = "+NOTIF: 1,,3";
+ZTEST(at_parser, test_at_parser_int16_get_enodata)
+{
+	int ret;
+	int16_t val;
+	struct at_parser parser;
 
-	ret = at_parser_init(&parser, str2);
+	const char *str1 = "+NOTIF: 1,,3";
+
+	ret = at_parser_init(&parser, str1);
 	zassert_ok(ret);
 
 	/* Trying to parse an empty subparameter as integer. */
 	ret = at_parser_int16_get(&parser, 2, &val);
-	zassert_equal(ret, -EOPNOTSUPP);
+	zassert_equal(ret, -ENODATA);
 }
 
 ZTEST(at_parser, test_at_parser_int16_get_ebadmsg)
@@ -1099,15 +1113,22 @@ ZTEST(at_parser, test_at_parser_uint32_get_eopnotsupp)
 	/* Trying to parse notification string as integer. */
 	ret = at_parser_uint32_get(&parser, 0, &val);
 	zassert_equal(ret, -EOPNOTSUPP);
+}
 
-	const char *str2 = "+NOTIF: 1,,3";
+ZTEST(at_parser, test_at_parser_uint32_get_enodata)
+{
+	int ret;
+	uint32_t val;
+	struct at_parser parser;
 
-	ret = at_parser_init(&parser, str2);
+	const char *str1 = "+NOTIF: 1,,3";
+
+	ret = at_parser_init(&parser, str1);
 	zassert_ok(ret);
 
 	/* Trying to parse an empty subparameter as integer. */
 	ret = at_parser_uint32_get(&parser, 2, &val);
-	zassert_equal(ret, -EOPNOTSUPP);
+	zassert_equal(ret, -ENODATA);
 }
 
 ZTEST(at_parser, test_at_parser_uint32_get_ebadmsg)
@@ -1242,15 +1263,22 @@ ZTEST(at_parser, test_at_parser_int32_get_eopnotsupp)
 	/* Trying to parse notification string as integer. */
 	ret = at_parser_int32_get(&parser, 0, &val);
 	zassert_equal(ret, -EOPNOTSUPP);
+}
 
-	const char *str2 = "+NOTIF: 1,,3";
+ZTEST(at_parser, test_at_parser_int32_get_enodata)
+{
+	int ret;
+	int32_t val;
+	struct at_parser parser;
 
-	ret = at_parser_init(&parser, str2);
+	const char *str1 = "+NOTIF: 1,,3";
+
+	ret = at_parser_init(&parser, str1);
 	zassert_ok(ret);
 
 	/* Trying to parse an empty subparameter as integer. */
 	ret = at_parser_int32_get(&parser, 2, &val);
-	zassert_equal(ret, -EOPNOTSUPP);
+	zassert_equal(ret, -ENODATA);
 }
 
 ZTEST(at_parser, test_at_parser_int32_get_ebadmsg)
@@ -1389,15 +1417,22 @@ ZTEST(at_parser, test_at_parser_uint64_get_eopnotsupp)
 	/* Trying to parse notification string as integer. */
 	ret = at_parser_uint64_get(&parser, 0, &val);
 	zassert_equal(ret, -EOPNOTSUPP);
+}
 
-	const char *str2 = "+NOTIF: 1,,3";
+ZTEST(at_parser, test_at_parser_uint64_get_enodata)
+{
+	int ret;
+	uint64_t val;
+	struct at_parser parser;
 
-	ret = at_parser_init(&parser, str2);
+	const char *str1 = "+NOTIF: 1,,3";
+
+	ret = at_parser_init(&parser, str1);
 	zassert_ok(ret);
 
 	/* Trying to parse an empty subparameter as integer. */
 	ret = at_parser_uint64_get(&parser, 2, &val);
-	zassert_equal(ret, -EOPNOTSUPP);
+	zassert_equal(ret, -ENODATA);
 }
 
 ZTEST(at_parser, test_at_parser_uint64_get_ebadmsg)
@@ -1540,15 +1575,22 @@ ZTEST(at_parser, test_at_parser_int64_get_eopnotsupp)
 	/* Trying to parse notification string as integer. */
 	ret = at_parser_int64_get(&parser, 0, &val);
 	zassert_equal(ret, -EOPNOTSUPP);
+}
 
-	const char *str2 = "+NOTIF: 1,,3";
+ZTEST(at_parser, test_at_parser_int64_get_enodata)
+{
+	int ret;
+	int64_t val;
+	struct at_parser parser;
 
-	ret = at_parser_init(&parser, str2);
+	const char *str1 = "+NOTIF: 1,,3";
+
+	ret = at_parser_init(&parser, str1);
 	zassert_ok(ret);
 
 	/* Trying to parse an empty subparameter as integer. */
 	ret = at_parser_int64_get(&parser, 2, &val);
-	zassert_equal(ret, -EOPNOTSUPP);
+	zassert_equal(ret, -ENODATA);
 }
 
 ZTEST(at_parser, test_at_parser_int64_get_ebadmsg)
@@ -1741,7 +1783,7 @@ ZTEST(at_parser, test_at_parser_string_get)
 {
 	int ret;
 	struct at_parser parser;
-	char buffer[32] = { 0 };
+	char buffer[64] = { 0 };
 	size_t len = sizeof(buffer);
 
 	const char *str1 = "+CGEV: ME PDN ACT 0";
@@ -1753,6 +1795,8 @@ ZTEST(at_parser, test_at_parser_string_get)
 	zassert_ok(ret);
 	zassert_mem_equal("ME PDN ACT 0", buffer, len);
 
+	len = sizeof(buffer);
+
 	const char *str2 = "+NOTIF: \"\"";
 
 	ret = at_parser_init(&parser, str2);
@@ -1761,6 +1805,17 @@ ZTEST(at_parser, test_at_parser_string_get)
 	ret = at_parser_string_get(&parser, 1, buffer, &len);
 	zassert_ok(ret);
 	zassert_mem_equal("", buffer, len);
+
+	len = sizeof(buffer);
+
+	const char *str3 = "mfw-nr+_nrf91x1_0.0.0-110.nr+-test\r\nOK\r\n";
+
+	ret = at_parser_init(&parser, str3);
+	zassert_ok(ret);
+
+	ret = at_parser_string_get(&parser, 0, buffer, &len);
+	zassert_ok(ret);
+	zassert_mem_equal("mfw-nr+_nrf91x1_0.0.0-110.nr+-test", buffer, len);
 }
 
 ZTEST(at_parser, test_at_parser_string_get_array)

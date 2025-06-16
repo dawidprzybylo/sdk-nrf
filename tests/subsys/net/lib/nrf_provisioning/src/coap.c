@@ -113,6 +113,10 @@ int zsock_getaddrinfo(const char *host, const char *service, const struct zsock_
 	return 0;
 }
 
+void zsock_freeaddrinfo(struct zsock_addrinfo *ai)
+{
+}
+
 int z_impl_zsock_connect(int sock, const struct sockaddr *addr, socklen_t addrlen)
 {
 	return 0;
@@ -271,7 +275,8 @@ static int coap_client_cmds_valid_path_cb(struct coap_client *client, int sock,
 					  int cmock_num_calls)
 {
 	char path[] = "p/cmd?after=&rxMaxSize=" STRINGIFY(CONFIG_NRF_PROVISIONING_RX_BUF_SZ)
-		"&txMaxSize=" STRINGIFY(CONFIG_NRF_PROVISIONING_TX_BUF_SZ);
+		"&txMaxSize=" STRINGIFY(CONFIG_NRF_PROVISIONING_TX_BUF_SZ)
+		"&limit=" STRINGIFY(CONFIG_NRF_PROVISIONING_CBOR_RECORDS);
 
 	if (strncmp(req->path, auth_path, strlen(auth_path)) == 0) {
 		req->cb(COAP_RESPONSE_CODE_CREATED, 0, NULL, 0, true, req->user_data);
@@ -412,6 +417,8 @@ void test_coap_auth_valid(void)
 		.connect_socket = -1,
 	};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_modem_info_string_get_ExpectAnyArgsAndReturn(sizeof(MFW_VER));
 	__cmock_modem_info_string_get_ReturnArrayThruPtr_buf(MFW_VER, strlen(MFW_VER) + 1);
 
@@ -423,6 +430,7 @@ void test_coap_auth_valid(void)
 	__cmock_coap_client_req_AddCallback(coap_client_auth_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	nrf_provisioning_coap_req(&coap_ctx);
 }
@@ -512,6 +520,8 @@ void test_coap_no_more_commands(void)
 		.connect_socket = -1,
 	};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_modem_info_string_get_ExpectAnyArgsAndReturn(sizeof(MFW_VER));
 	__cmock_modem_info_string_get_ReturnArrayThruPtr_buf(MFW_VER, strlen(MFW_VER) + 1);
 
@@ -523,6 +533,7 @@ void test_coap_no_more_commands(void)
 	__cmock_coap_client_req_AddCallback(coap_client_no_commands_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	int ret = nrf_provisioning_coap_req(&coap_ctx);
 
@@ -538,6 +549,8 @@ void test_coap_cmds_valid_path(void)
 		.connect_socket = -1,
 	};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_modem_info_string_get_ExpectAnyArgsAndReturn(sizeof(MFW_VER));
 	__cmock_modem_info_string_get_ReturnArrayThruPtr_buf(MFW_VER, strlen(MFW_VER) + 1);
 
@@ -549,6 +562,7 @@ void test_coap_cmds_valid_path(void)
 	__cmock_coap_client_req_AddCallback(coap_client_cmds_valid_path_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	int ret = nrf_provisioning_coap_req(&coap_ctx);
 
@@ -565,6 +579,8 @@ void test_coap_cmds_bad_request(void)
 		.connect_socket = -1,
 	};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_modem_info_string_get_ExpectAnyArgsAndReturn(sizeof(MFW_VER));
 	__cmock_modem_info_string_get_ReturnArrayThruPtr_buf(MFW_VER, strlen(MFW_VER) + 1);
 
@@ -576,6 +592,7 @@ void test_coap_cmds_bad_request(void)
 	__cmock_coap_client_req_AddCallback(coap_client_cmds_bad_request_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	int ret = nrf_provisioning_coap_req(&coap_ctx);
 
@@ -592,6 +609,8 @@ void test_coap_cmds_server_error(void)
 		.connect_socket = -1,
 	};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_modem_info_string_get_ExpectAnyArgsAndReturn(sizeof(MFW_VER));
 	__cmock_modem_info_string_get_ReturnArrayThruPtr_buf(MFW_VER, strlen(MFW_VER) + 1);
 
@@ -603,6 +622,7 @@ void test_coap_cmds_server_error(void)
 	__cmock_coap_client_req_AddCallback(coap_client_cmds_server_error_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	int ret = nrf_provisioning_coap_req(&coap_ctx);
 
@@ -619,6 +639,8 @@ void test_coap_cmds_unsupported_code(void)
 		.connect_socket = -1,
 	};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_modem_info_string_get_ExpectAnyArgsAndReturn(sizeof(MFW_VER));
 	__cmock_modem_info_string_get_ReturnArrayThruPtr_buf(MFW_VER, strlen(MFW_VER) + 1);
 
@@ -630,6 +652,7 @@ void test_coap_cmds_unsupported_code(void)
 	__cmock_coap_client_req_AddCallback(coap_client_cmds_unsupported_code_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	int ret = nrf_provisioning_coap_req(&coap_ctx);
 
@@ -731,6 +754,8 @@ void test_provisioning_task_valid(void)
 	static struct nrf_provisioning_mm_change mm = {.cb = dummy_nrf_provisioning_modem_mode_cb,
 						       .user_data = NULL};
 
+	struct coap_client_option block2_option = {};
+
 	k_work_init_delayable(&trigger_data.work, provisioning_condvar_signal);
 
 	__cmock_modem_key_mgmt_exists_AddCallback(modem_key_mgmt_exists_true);
@@ -771,6 +796,8 @@ void test_provisioning_task_valid(void)
 		CONFIG_NRF_PROVISIONING_JWT_MAX_VALID_TIME_S, tok_jwt_plain,
 		strlen(tok_jwt_plain) + 1);
 
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
+
 	__cmock_coap_client_req_AddCallback(coap_client_ok_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
@@ -799,6 +826,8 @@ void test_provisioning_commands(void)
 						       .user_data = NULL};
 	static struct nrf_provisioning_mm_change mm = {.cb = dummy_nrf_provisioning_modem_mode_cb,
 						       .user_data = NULL};
+
+	struct coap_client_option block2_option = {};
 
 	k_work_init_delayable(&trigger_data.work, provisioning_condvar_signal);
 
@@ -849,6 +878,8 @@ void test_provisioning_commands(void)
 		CONFIG_NRF_PROVISIONING_JWT_MAX_VALID_TIME_S, tok_jwt_plain,
 		strlen(tok_jwt_plain) + 1);
 
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
+
 	__cmock_coap_client_req_AddCallback(coap_client_commands_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
@@ -885,6 +916,8 @@ void test_coap_rps_bad_request(void)
 	struct nrf_provisioning_mm_change mm = {.cb = dummy_nrf_provisioning_modem_mode_cb,
 						.user_data = NULL};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_lte_lc_func_mode_get_IgnoreAndReturn(0);
 	__cmock_nrf_provisioning_at_cmee_enable_ExpectAndReturn(0);
 	__cmock_nrf_provisioning_at_cmee_control_ExpectAnyArgsAndReturn(0);
@@ -899,6 +932,8 @@ void test_coap_rps_bad_request(void)
 	__cmock_nrf_provisioning_jwt_generate_CMockReturnMemThruPtr_jwt_buf(
 		CONFIG_NRF_PROVISIONING_JWT_MAX_VALID_TIME_S, tok_jwt_plain,
 		strlen(tok_jwt_plain) + 1);
+
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	__cmock_coap_client_req_AddCallback(coap_client_rsp_bad_request_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
@@ -923,6 +958,8 @@ void test_coap_rsp_server_error(void)
 	struct nrf_provisioning_mm_change mm = {.cb = dummy_nrf_provisioning_modem_mode_cb,
 						.user_data = NULL};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_lte_lc_func_mode_get_IgnoreAndReturn(0);
 	__cmock_nrf_provisioning_at_cmee_enable_ExpectAndReturn(0);
 	__cmock_nrf_provisioning_at_cmee_control_ExpectAnyArgsAndReturn(0);
@@ -937,6 +974,8 @@ void test_coap_rsp_server_error(void)
 	__cmock_nrf_provisioning_jwt_generate_CMockReturnMemThruPtr_jwt_buf(
 		CONFIG_NRF_PROVISIONING_JWT_MAX_VALID_TIME_S, tok_jwt_plain,
 		strlen(tok_jwt_plain) + 1);
+
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	__cmock_coap_client_req_AddCallback(coap_client_rsp_server_error_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);
@@ -961,6 +1000,8 @@ void test_coap_rsp_unsupported_code(void)
 	struct nrf_provisioning_mm_change mm = {.cb = dummy_nrf_provisioning_modem_mode_cb,
 						.user_data = NULL};
 
+	struct coap_client_option block2_option = {};
+
 	__cmock_lte_lc_func_mode_get_IgnoreAndReturn(0);
 	__cmock_nrf_provisioning_at_cmee_enable_ExpectAndReturn(0);
 	__cmock_nrf_provisioning_at_cmee_control_ExpectAnyArgsAndReturn(0);
@@ -975,6 +1016,8 @@ void test_coap_rsp_unsupported_code(void)
 	__cmock_nrf_provisioning_jwt_generate_CMockReturnMemThruPtr_jwt_buf(
 		CONFIG_NRF_PROVISIONING_JWT_MAX_VALID_TIME_S, tok_jwt_plain,
 		strlen(tok_jwt_plain) + 1);
+
+	__cmock_coap_client_option_initial_block2_CMockIgnoreAndReturn(0, block2_option);
 
 	__cmock_coap_client_req_AddCallback(coap_client_rsp_unsupported_code_cb);
 	__cmock_coap_client_req_ExpectAnyArgsAndReturn(0);

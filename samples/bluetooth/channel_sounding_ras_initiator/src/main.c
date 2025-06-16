@@ -9,6 +9,7 @@
  */
 
 #include <math.h>
+#include <stdlib.h>
 #include <zephyr/kernel.h>
 #include <zephyr/types.h>
 #include <zephyr/sys/reboot.h>
@@ -30,7 +31,7 @@ LOG_MODULE_REGISTER(app_main, LOG_LEVEL_INF);
 #define CS_CONFIG_ID	       0
 #define NUM_MODE_0_STEPS       3
 #define PROCEDURE_COUNTER_NONE (-1)
-#define DE_SLIDING_WINDOW_SIZE (10)
+#define DE_SLIDING_WINDOW_SIZE (9)
 #define MAX_AP		       (CONFIG_BT_RAS_MAX_ANTENNA_PATHS)
 
 #define LOCAL_PROCEDURE_MEM                                                                        \
@@ -44,6 +45,7 @@ static K_SEM_DEFINE(sem_connected, 0, 1);
 static K_SEM_DEFINE(sem_discovery_done, 0, 1);
 static K_SEM_DEFINE(sem_mtu_exchange_done, 0, 1);
 static K_SEM_DEFINE(sem_security, 0, 1);
+static K_SEM_DEFINE(sem_ras_features, 0, 1);
 static K_SEM_DEFINE(sem_local_steps, 1, 1);
 
 static K_MUTEX_DEFINE(distance_estimate_buffer_mutex);
@@ -53,6 +55,7 @@ NET_BUF_SIMPLE_DEFINE_STATIC(latest_local_steps, LOCAL_PROCEDURE_MEM);
 NET_BUF_SIMPLE_DEFINE_STATIC(latest_peer_steps, BT_RAS_PROCEDURE_MEM);
 static int32_t most_recent_local_ranging_counter = PROCEDURE_COUNTER_NONE;
 static int32_t dropped_ranging_counter = PROCEDURE_COUNTER_NONE;
+static uint32_t ras_feature_bits;
 
 static uint8_t buffer_index;
 static uint8_t buffer_num_valid;
@@ -78,6 +81,29 @@ static void store_distance_estimates(cs_de_report_t *p_report)
 	k_mutex_unlock(&distance_estimate_buffer_mutex);
 }
 
+static int float_cmp(const void *a, const void *b)
+{
+	float fa = *(const float *)a;
+	float fb = *(const float *)b;
+
+	return (fa > fb) - (fa < fb);
+}
+
+static float median_inplace(int count, float *values)
+{
+	if (count == 0) {
+		return NAN;
+	}
+
+	qsort(values, count, sizeof(float), float_cmp);
+
+	if (count % 2 == 0) {
+		return (values[count/2] + values[count/2 - 1]) / 2;
+	} else {
+		return values[count/2];
+	}
+}
+
 static cs_de_dist_estimates_t get_distance(uint8_t ap)
 {
 	cs_de_dist_estimates_t averaged_result = {};
@@ -85,53 +111,59 @@ static cs_de_dist_estimates_t get_distance(uint8_t ap)
 	uint8_t num_phase_slope = 0;
 	uint8_t num_rtt = 0;
 
+	static float temp_ifft[DE_SLIDING_WINDOW_SIZE];
+	static float temp_phase_slope[DE_SLIDING_WINDOW_SIZE];
+	static float temp_rtt[DE_SLIDING_WINDOW_SIZE];
+
 	int lock_state = k_mutex_lock(&distance_estimate_buffer_mutex, K_FOREVER);
 
 	__ASSERT_NO_MSG(lock_state == 0);
 
 	for (uint8_t i = 0; i < buffer_num_valid; i++) {
 		if (isfinite(distance_estimate_buffer[ap][i].ifft)) {
+			temp_ifft[num_ifft] = distance_estimate_buffer[ap][i].ifft;
 			num_ifft++;
-			averaged_result.ifft += distance_estimate_buffer[ap][i].ifft;
 		}
 		if (isfinite(distance_estimate_buffer[ap][i].phase_slope)) {
+			temp_phase_slope[num_phase_slope] =
+				distance_estimate_buffer[ap][i].phase_slope;
 			num_phase_slope++;
-			averaged_result.phase_slope += distance_estimate_buffer[ap][i].phase_slope;
 		}
 		if (isfinite(distance_estimate_buffer[ap][i].rtt)) {
+			temp_rtt[num_rtt] = distance_estimate_buffer[ap][i].rtt;
 			num_rtt++;
-			averaged_result.rtt += distance_estimate_buffer[ap][i].rtt;
 		}
 	}
 
 	k_mutex_unlock(&distance_estimate_buffer_mutex);
 
-	if (num_ifft) {
-		averaged_result.ifft /= num_ifft;
-	}
-
-	if (num_phase_slope) {
-		averaged_result.phase_slope /= num_phase_slope;
-	}
-
-	if (num_rtt) {
-		averaged_result.rtt /= num_rtt;
-	}
+	averaged_result.ifft = median_inplace(num_ifft, temp_ifft);
+	averaged_result.phase_slope = median_inplace(num_phase_slope, temp_phase_slope);
+	averaged_result.rtt = median_inplace(num_rtt, temp_rtt);
 
 	return averaged_result;
 }
 
-static void ranging_data_get_complete_cb(struct bt_conn *conn, uint16_t ranging_counter, int err)
+static void ranging_data_cb(struct bt_conn *conn, uint16_t ranging_counter, int err)
 {
 	ARG_UNUSED(conn);
 
 	if (err) {
-		LOG_ERR("Error when getting ranging data with ranging counter %d (err %d)",
+		LOG_ERR("Error when receiving ranging data with ranging counter %d (err %d)",
 			ranging_counter, err);
 		return;
 	}
 
-	LOG_DBG("Ranging data get completed for ranging counter %d", ranging_counter);
+	if (ranging_counter != most_recent_local_ranging_counter) {
+		LOG_INF("Ranging data dropped as peer ranging counter doesn't match local ranging "
+			"data counter. (peer: %u, local: %u)",
+			ranging_counter, most_recent_local_ranging_counter);
+		net_buf_simple_reset(&latest_local_steps);
+		k_sem_give(&sem_local_steps);
+		return;
+	}
+
+	LOG_DBG("Ranging data received for ranging counter %d", ranging_counter);
 
 	/* This struct is static to avoid putting it on the stack (it's very large) */
 	static cs_de_report_t cs_de_report;
@@ -140,7 +172,11 @@ static void ranging_data_get_complete_cb(struct bt_conn *conn, uint16_t ranging_
 			      &cs_de_report);
 
 	net_buf_simple_reset(&latest_local_steps);
-	net_buf_simple_reset(&latest_peer_steps);
+
+	if (!(ras_feature_bits & RAS_FEAT_REALTIME_RD)) {
+		net_buf_simple_reset(&latest_peer_steps);
+	}
+
 	k_sem_give(&sem_local_steps);
 
 	cs_de_quality_t quality = cs_de_calc(&cs_de_report);
@@ -160,16 +196,18 @@ static void subevent_result_cb(struct bt_conn *conn, struct bt_conn_le_cs_subeve
 		return;
 	}
 
-	if (most_recent_local_ranging_counter != result->header.procedure_counter) {
+	if (most_recent_local_ranging_counter
+		!= bt_ras_rreq_get_ranging_counter(result->header.procedure_counter)) {
 		int sem_state = k_sem_take(&sem_local_steps, K_NO_WAIT);
 
 		if (sem_state < 0) {
 			dropped_ranging_counter = result->header.procedure_counter;
-			LOG_DBG("Dropped subevent results due to unfinished ranging data request.");
+			LOG_INF("Dropped subevent results. Waiting for ranging data from peer.");
 			return;
 		}
 
-		most_recent_local_ranging_counter = result->header.procedure_counter;
+		most_recent_local_ranging_counter =
+			bt_ras_rreq_get_ranging_counter(result->header.procedure_counter);
 	}
 
 	if (result->header.subevent_done_status == BT_CONN_LE_CS_SUBEVENT_ABORTED) {
@@ -193,7 +231,8 @@ static void subevent_result_cb(struct bt_conn *conn, struct bt_conn_le_cs_subeve
 	dropped_ranging_counter = PROCEDURE_COUNTER_NONE;
 
 	if (result->header.procedure_done_status == BT_CONN_LE_CS_PROCEDURE_COMPLETE) {
-		most_recent_local_ranging_counter = result->header.procedure_counter;
+		most_recent_local_ranging_counter =
+			bt_ras_rreq_get_ranging_counter(result->header.procedure_counter);
 	} else if (result->header.procedure_done_status == BT_CONN_LE_CS_PROCEDURE_ABORTED) {
 		LOG_WRN("Procedure %u aborted", result->header.procedure_counter);
 		net_buf_simple_reset(&latest_local_steps);
@@ -208,7 +247,7 @@ static void ranging_data_ready_cb(struct bt_conn *conn, uint16_t ranging_counter
 	if (ranging_counter == most_recent_local_ranging_counter) {
 		int err = bt_ras_rreq_cp_get_ranging_data(connection, &latest_peer_steps,
 							  ranging_counter,
-							  ranging_data_get_complete_cb);
+							  ranging_data_cb);
 		if (err) {
 			LOG_ERR("Get ranging data failed (err %d)", err);
 			net_buf_simple_reset(&latest_local_steps);
@@ -401,6 +440,18 @@ static void procedure_enable_cb(struct bt_conn *conn,
 	}
 }
 
+void ras_features_read_cb(struct bt_conn *conn, uint32_t feature_bits, int err)
+{
+	if (err) {
+		LOG_WRN("Error while reading RAS feature bits (err %d)", err);
+	} else {
+		LOG_INF("Read RAS feature bits: 0x%x", feature_bits);
+		ras_feature_bits = feature_bits;
+	}
+
+	k_sem_give(&sem_ras_features);
+}
+
 static void scan_filter_match(struct bt_scan_device_info *device_info,
 			      struct bt_scan_filter_match *filter_match, bool connectable)
 {
@@ -531,28 +582,48 @@ int main(void)
 		return 0;
 	}
 
-	err = bt_ras_rreq_rd_overwritten_subscribe(connection, ranging_data_overwritten_cb);
+	err = bt_ras_rreq_read_features(connection, ras_features_read_cb);
 	if (err) {
-		LOG_ERR("RAS RREQ ranging data overwritten subscribe failed (err %d)", err);
+		LOG_ERR("Could not get RAS features from peer (err %d)", err);
 		return 0;
 	}
 
-	err = bt_ras_rreq_rd_ready_subscribe(connection, ranging_data_ready_cb);
-	if (err) {
-		LOG_ERR("RAS RREQ ranging data ready subscribe failed (err %d)", err);
-		return 0;
-	}
+	k_sem_take(&sem_ras_features, K_FOREVER);
 
-	err = bt_ras_rreq_on_demand_rd_subscribe(connection);
-	if (err) {
-		LOG_ERR("RAS RREQ On-demand ranging data subscribe failed (err %d)", err);
-		return 0;
-	}
+	const bool realtime_rd = ras_feature_bits & RAS_FEAT_REALTIME_RD;
 
-	err = bt_ras_rreq_cp_subscribe(connection);
-	if (err) {
-		LOG_ERR("RAS RREQ CP subscribe failed (err %d)", err);
-		return 0;
+	if (realtime_rd) {
+		err = bt_ras_rreq_realtime_rd_subscribe(connection,
+							&latest_peer_steps,
+							ranging_data_cb);
+		if (err) {
+			LOG_ERR("RAS RREQ Real-time ranging data subscribe failed (err %d)", err);
+			return 0;
+		}
+	} else {
+		err = bt_ras_rreq_rd_overwritten_subscribe(connection, ranging_data_overwritten_cb);
+		if (err) {
+			LOG_ERR("RAS RREQ ranging data overwritten subscribe failed (err %d)", err);
+			return 0;
+		}
+
+		err = bt_ras_rreq_rd_ready_subscribe(connection, ranging_data_ready_cb);
+		if (err) {
+			LOG_ERR("RAS RREQ ranging data ready subscribe failed (err %d)", err);
+			return 0;
+		}
+
+		err = bt_ras_rreq_on_demand_rd_subscribe(connection);
+		if (err) {
+			LOG_ERR("RAS RREQ On-demand ranging data subscribe failed (err %d)", err);
+			return 0;
+		}
+
+		err = bt_ras_rreq_cp_subscribe(connection);
+		if (err) {
+			LOG_ERR("RAS RREQ CP subscribe failed (err %d)", err);
+			return 0;
+		}
 	}
 
 	err = bt_le_cs_read_remote_supported_capabilities(connection);
@@ -602,8 +673,8 @@ int main(void)
 	const struct bt_le_cs_set_procedure_parameters_param procedure_params = {
 		.config_id = CS_CONFIG_ID,
 		.max_procedure_len = 1000,
-		.min_procedure_interval = 10,
-		.max_procedure_interval = 10,
+		.min_procedure_interval = realtime_rd ? 5 : 10,
+		.max_procedure_interval = realtime_rd ? 5 : 10,
 		.max_procedure_count = 0,
 		.min_subevent_len = 60000,
 		.max_subevent_len = 60000,

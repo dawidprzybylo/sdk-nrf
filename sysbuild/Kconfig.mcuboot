@@ -141,9 +141,9 @@ if BOOTLOADER_MCUBOOT
 
 choice BOOT_SIGNATURE_TYPE
 	default BOOT_SIGNATURE_TYPE_RSA if THINGY91_STATIC_PARTITIONS_FACTORY
+	default BOOT_SIGNATURE_TYPE_ED25519 if SOC_SERIES_NRF54LX
 	default BOOT_SIGNATURE_TYPE_ECDSA_P256 if ((SOC_NRF52840 || SOC_SERIES_NRF91X) && !BOARD_THINGY91_NRF9160 && !BOARD_THINGY91_NRF52840)
 	default BOOT_SIGNATURE_TYPE_ECDSA_P256 if SECURE_BOOT_APPCORE
-	default BOOT_SIGNATURE_TYPE_ED25519 if SOC_SERIES_NRF54LX
 
 endchoice
 
@@ -169,15 +169,19 @@ config MCUBOOT_SIGNATURE_USING_KMU
 	help
 	  The device needs to be provisioned with proper set of keys.
 
+config BOOT_SHARED_CRYPTO_ECDSA_P256
+	bool "Use external crypto from NSIB for ECDSA P256 signature"
+	depends on SECURE_BOOT_APPCORE && SECURE_BOOT_SIGNATURE_TYPE_ECDSA
+	depends on BOOT_SIGNATURE_TYPE_ECDSA_P256 && !SOC_SERIES_NRF54LX
+	default y
+
 endif
 
 config MCUBOOT_USE_ALL_AVAILABLE_RAM
-	bool "Allow MCUboot to use all available RAM (security implications)"
+	bool "Allow MCUboot to use all available RAM"
 	depends on BOARD_IS_NON_SECURE
 	help
-	  By default MCUboot uses only the secure RAM partition. Enabling this
-	  may allow secrets to be leaked to non-secure through the non-secure
-	  RAM partition.
+	  By default MCUboot uses only the secure RAM partition.
 
 config MCUBOOT_NRF53_MULTI_IMAGE_UPDATE
 	bool "Network core multi-image update (in single operation)"

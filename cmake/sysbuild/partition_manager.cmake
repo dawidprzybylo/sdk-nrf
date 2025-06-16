@@ -58,14 +58,12 @@ function(partition_manager)
   ncs_file(CONF_FILES ${${image_name}_APPLICATION_CONFIG_DIR}
            PM conf_dir_pm_static
            DOMAIN ${PM_DOMAIN}
-           BUILD ${CONF_FILE_BUILD_TYPE}
            ${ncs_file_board}
   )
 
   ncs_file(CONF_FILES ${BOARD_DIR}
            PM board_dir_pm_static
            DOMAIN ${PM_DOMAIN}
-           BUILD ${CONF_FILE_BUILD_TYPE}
            ${ncs_file_board}
   )
 
@@ -500,6 +498,8 @@ foreach(d APP ${PM_DOMAINS})
   sysbuild_get(${image_name}_CONFIG_SOC_NRF5340_CPUAPP IMAGE ${image_name} VAR CONFIG_SOC_NRF5340_CPUAPP KCONFIG)
   sysbuild_get(${image_name}_CONFIG_SOC_SERIES_NRF54LX IMAGE ${image_name} VAR CONFIG_SOC_SERIES_NRF54LX KCONFIG)
   sysbuild_get(${image_name}_CONFIG_SOC_NRF54L15_CPUAPP IMAGE ${image_name} VAR CONFIG_SOC_NRF54L15_CPUAPP KCONFIG)
+  sysbuild_get(${image_name}_CONFIG_SOC_NRF54L05_CPUAPP IMAGE ${image_name} VAR CONFIG_SOC_NRF54L05_CPUAPP KCONFIG)
+  sysbuild_get(${image_name}_CONFIG_SOC_NRF54L10_CPUAPP IMAGE ${image_name} VAR CONFIG_SOC_NRF54L10_CPUAPP KCONFIG)
 
   if(${image_name}_CONFIG_SOC_SERIES_NRF91X)
     # See nRF9160 Product Specification, chapter "UICR"
@@ -513,7 +513,10 @@ foreach(d APP ${PM_DOMAINS})
     set(bootconf_start_addr "0xffd080")
     set(bootconf_size 4)
 
-    if(DEFINED ${image_name}_CONFIG_SOC_NRF54L15_CPUAPP)
+    if(DEFINED ${image_name}_CONFIG_SOC_NRF54L15_CPUAPP
+      OR DEFINED ${image_name}_CONFIG_SOC_NRF54L05_CPUAPP
+      OR DEFINED ${image_name}_CONFIG_SOC_NRF54L10_CPUAPP
+      )
       set(otp_start_addr "0xffd500")
       set(otp_size 1276)  # 319 * 4
     endif()
@@ -540,7 +543,7 @@ foreach(d APP ${PM_DOMAINS})
   sysbuild_get(${image_name}_CONFIG_FLASH_SIZE IMAGE ${image_name} VAR CONFIG_FLASH_SIZE KCONFIG)
   math(EXPR flash_size "${${image_name}_CONFIG_FLASH_SIZE} * 1024" OUTPUT_FORMAT HEXADECIMAL)
 
-  if (${image_name}_CONFIG_SOC_SERIES_NRF91X OR ${image_name}_CONFIG_SOC_NRF5340_CPUAPP OR ${image_name}_CONFIG_SOC_NRF54L15_CPUAPP)
+  if (${image_name}_CONFIG_SOC_SERIES_NRF91X OR ${image_name}_CONFIG_SOC_NRF5340_CPUAPP OR ${image_name}_CONFIG_SOC_NRF54L15_CPUAPP OR ${image_name}_CONFIG_SOC_NRF54L05_CPUAPP OR ${image_name}_CONFIG_SOC_NRF54L10_CPUAPP)
     add_region(
       NAME otp
       SIZE ${otp_size}
@@ -577,12 +580,7 @@ sysbuild_get(num_bits IMAGE ${DEFAULT_IMAGE} VAR CONFIG_PM_EXTERNAL_FLASH_SIZE_B
 if(ext_flash_enabled)
   math(EXPR num_bytes "${num_bits} / 8")
 
-  sysbuild_get(custom_driver IMAGE ${DEFAULT_IMAGE} VAR CONFIG_PM_OVERRIDE_EXTERNAL_DRIVER_CHECK KCONFIG)
-  if (custom_driver)
-    set(external_flash_driver_kconfig CONFIG_PM_OVERRIDE_EXTERNAL_DRIVER_CHECK)
-  else()
-    set(external_flash_driver_kconfig CONFIG_NORDIC_QSPI_NOR)
-  endif()
+  set(external_flash_driver_kconfig CONFIG_PM_EXTERNAL_FLASH_HAS_DRIVER)
 
   sysbuild_get(external_flash_base IMAGE ${DEFAULT_IMAGE} VAR CONFIG_PM_EXTERNAL_FLASH_BASE KCONFIG)
   add_region(

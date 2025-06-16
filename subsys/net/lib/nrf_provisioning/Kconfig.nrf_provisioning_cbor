@@ -5,13 +5,13 @@
 #
 menuconfig NRF_PROVISIONING_CBOR
 	bool "nRF Provisioning CBOR content format"
-	select EXPERIMENTAL
 	depends on ZCBOR
 
 if NRF_PROVISIONING_CBOR
 
 config NRF_PROVISIONING_CBOR_RECORDS
 	int "Maximum number of CBOR records that can be encoded or decoded at a time"
+	range 5 20
 	default 10
 
 endif

@@ -47,6 +47,14 @@ function(ncs_secure_boot_mcuboot_sign application bin_files signed_targets prefi
   # 'west sign' arguments for confirmed, unconfirmed and encrypted images.
   set(encrypted_args)
 
+  if(SB_CONFIG_SOC_SERIES_NRF54LX AND SB_CONFIG_BOOT_SIGNATURE_TYPE_ED25519)
+    if(NOT SB_CONFIG_BOOT_SIGNATURE_TYPE_PURE)
+      set(imgtool_extra --sha 512 ${imgtool_extra})
+    else()
+      set(imgtool_extra --pure ${imgtool_extra})
+    endif()
+  endif()
+
   # Set up .bin outputs.
   if(CONFIG_BUILD_OUTPUT_BIN)
     list(APPEND byproducts ${output}.bin)
@@ -93,6 +101,21 @@ function(ncs_secure_boot_mcuboot_sign application bin_files signed_targets prefi
       ${application_image_dir}/zephyr/.config
       ${CMAKE_BINARY_DIR}/signed_by_b0_${application}.hex
       )
+
+    if(SB_CONFIG_PARTITION_MANAGER AND NOT prefix)
+      # Set the partition manager hex file and target
+      set_property(
+        GLOBAL PROPERTY
+        ${application}_PM_HEX_FILE
+        ${output}.hex
+      )
+
+      set_property(
+        GLOBAL PROPERTY
+        ${application}_PM_TARGET
+        ${application}_signed_packaged_target
+      )
+    endif()
   endif()
 
   # Add the west sign calls and their byproducts to the post-processing

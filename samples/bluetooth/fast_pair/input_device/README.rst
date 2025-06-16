@@ -12,7 +12,7 @@ This sample demonstrates :ref:`how to use Google Fast Pair with the nRF Connect 
 Google Fast Pair Service (GFPS) is a standard for pairing Bluetooth® and Bluetooth LE devices with as little user interaction required as possible.
 Google also provides additional features built upon the Fast Pair standard.
 For detailed information about supported functionalities, see the official `Fast Pair`_ documentation.
-The software maturity level for the input device use case is outlined in the :ref:`software_maturity_fast_pair_use_case` table.
+The software maturity level for the input device use case is outlined in the :ref:`Google Fast Pair use case support <software_maturity_fast_pair_use_case>` table.
 
 .. note::
    Support for Fast Pair input device use case is also integrated into :ref:`nrf_desktop`.
@@ -84,7 +84,7 @@ See :ref:`ug_bt_fast_pair_provisioning` in the Fast Pair user guide for details.
 .. tip::
    The sample provides TX power in the Bluetooth advertising data.
    There is no need to provide the TX power value during device model registration.
-   The device is using only Bluetooth LE, so you must select **Skip connecting audio profiles (e.g. A2DP or HFP)** option when registering the device.
+   The device is using only Bluetooth LE, so you must select :guilabel:`Skip connecting audio profiles (e.g. A2DP or HFP)` option when registering the device.
 
 Seeker device
 =============
@@ -470,9 +470,35 @@ Battery Notification extension
 
 Complete the following steps to test `Fast Pair Battery Notification extension`_:
 
-#. Pair the Fast Pair Provider with at least one Fast Pair Seeker.
-#. Set the Fast Pair Provider in not discoverable advertising mode.
-#. Verify that the Provider is advertising sample battery data using the `nRF Connect for Mobile`_ application.
+.. tabs::
+
+   .. group-tab:: nRF52 and nRF53 DKs
+
+      #. Pair the Fast Pair Provider with at least one Fast Pair Seeker.
+      #. Disconnect the Fast Pair Seeker from the Fast Pair Provider.
+      #. After disconnection, the provider automatically switches from the discoverable advertising to the not discoverable advertising with the show UI indication mode and starts advertising sample battery data.
+         **LED 3** is blinking rapidly.
+      #. Verify that the Provider is advertising sample battery data using the `nRF Connect for Mobile`_ application:
+
+         a. Open the `nRF Connect for Mobile`_ application.
+         #. Open the :guilabel:`SCANNER` tab.
+         #. Identify your test device that acts as the Fast Pair Provider in the scanning list.
+         #. Tap on it to expand advertising details.
+         #. Verify that the sample battery level and charging status are displayed in the **Fast Pair** section.
+
+   .. group-tab:: nRF54 DKs
+
+      #. Pair the Fast Pair Provider with at least one Fast Pair Seeker.
+      #. Disconnect the Fast Pair Seeker from the Fast Pair Provider.
+      #. After disconnection, the provider automatically switches from the discoverable advertising to the not discoverable advertising with the show UI indication mode and starts advertising sample battery data.
+         **LED 2** is blinking rapidly.
+      #. Verify that the Provider is advertising sample battery data using the `nRF Connect for Mobile`_ application:
+
+         a. Open the `nRF Connect for Mobile`_ application.
+         #. Open the :guilabel:`SCANNER` tab.
+         #. Identify your test device that acts as the Fast Pair Provider in the scanning list.
+         #. Tap on it to expand advertising details.
+         #. Verify that the sample battery level and charging status are displayed in the **Fast Pair** section.
 
 .. note::
    Currently, Android phones have trouble with the Battery Notification extension and sometimes do not display battery information as a user indication.

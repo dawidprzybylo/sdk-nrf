@@ -152,7 +152,7 @@ nRF9160
   * :ref:`lib_ftp_client` library:
 
     * Support subset of RFC959 FTP commands only.
-    * Added support of STOU and APPE (besides STOR) for "put".
+    * Added support of STOU and APPE (besides STOR) for ``put``.
     * Added detection of socket errors, report with proprietary reply message.
     * Increased FTP payload size from NET_IPV4_MTU(576) to MSS as defined on modem side (708).
     * Added polling "226 Transfer complete" after data channel TX/RX, with a configurable timeout of 60 seconds.
@@ -408,7 +408,7 @@ Modem library
 * Updated :ref:`nrf_modem` to version 1.2.1.
   See the :ref:`nrfxlib:nrf_modem_changelog` for detailed information.
 * Added a new function-based GNSS API with support for new GNSS features in modem firmware v1.3.0.
-  See :ref:`GNSS interface<nrfxlib:gnss_interface>` for more information.
+  See :ref:`GNSS interface <nrfxlib:gnss_interface>` for more information.
 
   * GNSS socket API is now deprecated.
 
@@ -578,7 +578,7 @@ In addition to documentation related to the changes listed above, the following 
    * :ref:`app_bootloaders` - Bootloader and firmware update guide header page.
    * :ref:`bootloader` - Refactored to include more information about implemented features.
    * :ref:`ug_bootloader` - Updated architecture information for clarifying first- and second-stage bootloader design.
-   * "Immutable bootloader" references have been changed to "|NSIB|".
+   * ``Immutable bootloader`` references have been changed to ``|NSIB|``.
 
 * Multi-image builds - Added more information regarding child image usage, configuration options, and image-specific variables.
 * :ref:`partition_manager` - Added section about partition reports.

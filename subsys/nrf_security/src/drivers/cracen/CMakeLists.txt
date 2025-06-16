@@ -50,10 +50,14 @@ if(BUILD_INSIDE_TFM)
       platform_s
       tfm_sp_log
   )
+else()
+  # Ensure zephyr/offsets.h is generated as this is a dependency for CRACEN driver
+  # But not when building OpenThread because this casues a cyclic dependency
+  add_dependencies(cracen_psa_driver zephyr_generated_headers)
 endif()
 
-# Link oberon_psa_core with this PSA crypto driver
-target_link_libraries(oberon_psa_core
+# Link psa_core with this PSA crypto driver
+target_link_libraries(psa_core
   PRIVATE
     cracen_psa_driver
 )

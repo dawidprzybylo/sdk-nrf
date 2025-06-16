@@ -104,11 +104,6 @@ The following is an example of the CLI commands:
 
 See also :ref:`cmake_options` for instructions on how to provide CMake options.
 
-
-.. note::
-   |54H_engb_2_8|
-
-
 Supported CLI commands
 ======================
 
@@ -273,7 +268,7 @@ Supported CLI commands
        | Set operation example for interface index 1 (setting channel 5)
        | wifi -i1 -c5
 
-``wifi_cred`` is an extension to the Wi-Fi command line.
+``wifi cred`` is an extension to the Wi-Fi command line.
 It adds the following subcommands to interact with the :ref:`lib_wifi_credentials` library:
 
 .. list-table:: Wi-Fi credentials shell subcommands

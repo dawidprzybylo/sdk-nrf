@@ -11,6 +11,10 @@
 
 /delete-node/ &sw_pwm;
 
+/* Domain IDs. Can be used to specify channel links in IPCT nodes. */
+#define NRF_DOMAIN_ID_APPLICATION 0
+#define NRF_DOMAIN_ID_FLPR 1
+
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
@@ -33,6 +37,14 @@
 				swo-ref-frequency = <DT_FREQ_M(128)>;
 			};
 		};
+
+		cpuflpr: cpu@1 {
+			compatible = "nordic,vpr";
+			reg = <1>;
+			device_type = "cpu";
+			riscv,isa = "rv32emc";
+			nordic,bus-width = <32>;
+		};
 	};
 
 	clocks {
@@ -49,21 +61,28 @@
 		};
 
 		lfxo: lfxo {
-			compatible = "nordic,nrf-lfxo";
+			compatible = "nordic,nrf54l-lfxo";
 			#clock-cells = <0>;
 			clock-frequency = <32768>;
 		};
 
 		hfxo: hfxo {
-			compatible = "nordic,nrf-hfxo";
+			compatible = "nordic,nrf54l-hfxo";
 			#clock-cells = <0>;
 			clock-frequency = <DT_FREQ_M(32)>;
+			startup-time-us = <1650>;
 		};
 
 		hfpll: hfpll {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-frequency = <DT_FREQ_M(128)>;
+		};
+
+		aclk: aclk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <DT_FREQ_M(24)>;
 		};
 	};
 
@@ -87,7 +106,15 @@
 			reg = <0x20000000 DT_SIZE_K(511)>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			ranges = <0x0 0x20000000 0x7fc00>;
+			ranges = <0x0 0x20000000 DT_SIZE_K(511)>;
+		};
+
+		cpuflpr_sram: memory@20067c00 {
+			compatible = "mmio-sram";
+			reg = <0x20067c00 DT_SIZE_K(96)>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0x0 0x20067c00 DT_SIZE_K(96)>;
 		};
 
 		global_peripherals: peripheral@50000000 {
@@ -111,6 +138,24 @@
 				compatible = "nordic,nrf-ppib";
 				reg = <0x45000 0x1000>;
 				status = "disabled";
+			};
+
+			cpuflpr_vpr: vpr@4c000 {
+				compatible = "nordic,nrf-vpr-coprocessor";
+				reg = <0x4c000 0x1000>;
+				ranges = <0x0 0x4c000 0x1000>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				status = "disabled";
+
+				cpuflpr_clic: interrupt-controller@f0000000 {
+					compatible = "nordic,nrf-clic";
+					reg = <0xf0000000 0x143c>;
+					interrupt-controller;
+					#interrupt-cells = <2>;
+					#address-cells = <1>;
+					status = "disabled";
+				};
 			};
 
 			spi00: spi@4d000 {
@@ -221,6 +266,7 @@
 				ieee802154-supported;
 				ble-2mbps-supported;
 				ble-coded-phy-supported;
+				cs-supported;
 
 				ieee802154: ieee802154 {
 					compatible = "nordic,nrf-ieee802154";
@@ -230,6 +276,11 @@
 				/* Note: In the nRF Connect SDK the SoftDevice Controller
 				 * is added and set as the default Bluetooth Controller.
 				 */
+				bt_hci_sdc: bt_hci_sdc {
+					compatible = "nordic,bt-hci-sdc";
+					status = "disabled";
+				};
+
 				bt_hci_controller: bt_hci_controller {
 					compatible = "zephyr,bt-hci-ll-sw-split";
 					status = "disabled";
@@ -791,7 +842,14 @@
 
 			cpuapp_rram: rram@0 {
 				compatible = "soc-nv-flash";
-				reg = <0x0 DT_SIZE_K(2028)>;
+				reg = <0x0 DT_SIZE_K(2036)>;
+				erase-block-size = <4096>;
+				write-block-size = <16>;
+			};
+
+			cpuflpr_rram: rram@1e5000 {
+				compatible = "soc-nv-flash";
+				reg = <0x1e5000 DT_SIZE_K(96)>;
 				erase-block-size = <4096>;
 				write-block-size = <16>;
 			};

@@ -18,14 +18,20 @@
 
 #include <nrf_rpc_cbor.h>
 
+#include <zephyr/debug/coredump.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys_clock.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_backend.h>
 #include <zephyr/logging/log_backend_std.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/logging/log_output.h>
-#include <zephyr/retention/retention.h>
 
 #include <string.h>
+
+LOG_MODULE_REGISTER(log_rpc);
+
+#define USEC_PER_TICK (1000000 / CONFIG_SYS_CLOCK_TICKS_PER_SEC)
 
 /*
  * Drop messages coming from nRF RPC to avoid the avalanche of logs:
@@ -46,6 +52,7 @@ static const uint32_t common_output_flags =
 static bool panic_mode;
 static uint32_t log_format = LOG_OUTPUT_TEXT;
 static enum log_rpc_level stream_level = LOG_RPC_LEVEL_NONE;
+static log_timestamp_t log_timestamp_delta;
 
 #ifdef CONFIG_LOG_BACKEND_RPC_HISTORY
 static enum log_rpc_level history_level = LOG_RPC_LEVEL_NONE;
@@ -72,111 +79,63 @@ BUILD_ASSERT(LOG_LEVEL_DBG == LOG_RPC_LEVEL_DBG, "Logging level value mismatch")
 
 #ifdef CONFIG_LOG_BACKEND_RPC_CRASH_LOG
 
-#define CRASH_LOG_DEV DEVICE_DT_GET(DT_NODELABEL(crash_log))
-
-/* Header for the crash log data stored in the retained RAM partition. */
-typedef struct crash_log_header {
-	size_t size;
-} crash_log_header_t;
-
-static size_t crash_log_cur_size;
-static size_t crash_log_max_size;
-
-static void crash_log_clear(void)
+static void log_rpc_get_crash_dump_handler(const struct nrf_rpc_group *group,
+					   struct nrf_rpc_cbor_ctx *ctx, void *handler_data)
 {
-	const struct device *const crash_log = CRASH_LOG_DEV;
-	ssize_t rc;
-
-	crash_log_cur_size = 0;
-	crash_log_max_size = 0;
-
-	rc = retention_clear(crash_log);
-
-	if (rc) {
-		return;
-	}
-
-	rc = retention_size(crash_log);
-
-	if (rc <= (ssize_t)sizeof(crash_log_header_t)) {
-		/* Either failed to obtain the retained partition size, or it is too small. */
-		return;
-	}
-
-	crash_log_max_size = (size_t)rc - sizeof(crash_log_header_t);
-}
-
-static int output_to_retention(uint8_t *data, size_t length, void *output_ctx)
-{
-	const struct device *const crash_log = CRASH_LOG_DEV;
-
-	crash_log_header_t header;
-	size_t saved_length;
-
-	ARG_UNUSED(output_ctx);
-
-	if (crash_log_cur_size >= crash_log_max_size) {
-		/* Crash log partition overflow. */
-		goto out;
-	}
-
-	saved_length = MIN(length, crash_log_max_size - crash_log_cur_size);
-
-	if (retention_write(crash_log, sizeof(header) + crash_log_cur_size, data, saved_length)) {
-		goto out;
-	}
-
-	crash_log_cur_size += saved_length;
-	header.size = crash_log_cur_size;
-
-	(void)retention_write(crash_log, 0, (const uint8_t *)&header, sizeof(header));
-
-out:
-	return (int)length;
-}
-
-static void log_rpc_get_crash_log_handler(const struct nrf_rpc_group *group,
-					  struct nrf_rpc_cbor_ctx *ctx, void *handler_data)
-{
-	const struct device *const crash_log = CRASH_LOG_DEV;
 	size_t offset;
 	size_t length;
-	crash_log_header_t header;
+	size_t total_length;
+	int rc;
+	struct coredump_cmd_copy_arg copy_params;
 	struct nrf_rpc_cbor_ctx rsp_ctx;
 
 	offset = nrf_rpc_decode_uint(ctx);
 	length = nrf_rpc_decode_uint(ctx);
 
 	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
-		nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, group, LOG_RPC_CMD_GET_CRASH_LOG,
+		nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, group, LOG_RPC_CMD_GET_CRASH_DUMP,
 			    NRF_RPC_PACKET_TYPE_CMD);
 		return;
 	}
 
-	if (retention_is_valid(crash_log) != 1) {
+	/* Validate the dump integrity when the first chunk is requested */
+	if (offset == 0) {
+		rc = coredump_cmd(COREDUMP_CMD_VERIFY_STORED_DUMP, NULL);
+
+		if (rc != 1) {
+			goto err;
+		}
+	}
+
+	rc = coredump_query(COREDUMP_QUERY_GET_STORED_DUMP_SIZE, NULL);
+
+	if (rc <= 0) {
 		goto err;
 	}
 
-	if (retention_read(crash_log, 0, (uint8_t *)&header, sizeof(header))) {
+	total_length = (size_t)rc;
+
+	if (offset >= total_length) {
 		goto err;
 	}
 
-	if (offset >= header.size) {
-		goto err;
-	}
-
-	length = MIN(length, header.size - offset);
+	length = MIN(length, total_length - offset);
 	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, 5 + length);
 
 	if (!zcbor_bstr_start_encode(rsp_ctx.zs)) {
 		goto discard;
 	}
 
-	if (retention_read(crash_log, sizeof(header) + offset, rsp_ctx.zs[0].payload_mut, length)) {
+	copy_params.offset = offset;
+	copy_params.buffer = rsp_ctx.zs[0].payload_mut;
+	copy_params.length = length;
+	rc = coredump_cmd(COREDUMP_CMD_COPY_STORED_DUMP, &copy_params);
+
+	if (rc <= 0) {
 		goto discard;
 	}
 
-	rsp_ctx.zs[0].payload_mut += length;
+	rsp_ctx.zs[0].payload_mut += rc;
 
 	if (!zcbor_bstr_end_encode(rsp_ctx.zs, NULL)) {
 		goto discard;
@@ -194,21 +153,8 @@ send:
 	nrf_rpc_cbor_rsp_no_err(group, &rsp_ctx);
 }
 
-NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_get_crash_log_handler, LOG_RPC_CMD_GET_CRASH_LOG,
-			 log_rpc_get_crash_log_handler, NULL);
-#else
-static void crash_log_clear(void)
-{
-}
-
-static int output_to_retention(uint8_t *data, size_t length, void *output_ctx)
-{
-	ARG_UNUSED(data);
-	ARG_UNUSED(length);
-	ARG_UNUSED(output_ctx);
-
-	return (int)length;
-}
+NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_get_crash_dump_handler, LOG_RPC_CMD_GET_CRASH_DUMP,
+			 log_rpc_get_crash_dump_handler, NULL);
 #endif /* CONFIG_LOG_BACKEND_RPC_CRASH_LOG */
 
 static void format_message(struct log_msg *msg, uint32_t flags, log_output_func_t output_func,
@@ -263,17 +209,6 @@ static size_t format_message_to_buf(struct log_msg *msg, uint32_t flags, uint8_t
 	format_message(msg, flags, output_to_buf, &output_ctx);
 
 	return output_ctx.total_len;
-}
-
-static void retain_message(struct log_msg *msg)
-{
-	const uint32_t flags = common_output_flags | LOG_OUTPUT_FLAG_CRLF_LFONLY;
-
-	if (!IS_ENABLED(CONFIG_LOG_BACKEND_RPC_CRASH_LOG)) {
-		return;
-	}
-
-	format_message(msg, flags, output_to_retention, NULL);
 }
 
 static void stream_message(struct log_msg *msg)
@@ -343,7 +278,6 @@ static void process(const struct log_backend *const backend, union log_msg_gener
 	}
 
 	if (panic_mode) {
-		retain_message(msg);
 		return;
 	}
 
@@ -380,7 +314,6 @@ static void panic(struct log_backend const *const backend)
 {
 	ARG_UNUSED(backend);
 
-	crash_log_clear();
 	panic_mode = true;
 }
 
@@ -670,3 +603,39 @@ NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_echo_handler, LOG_RPC_CMD_ECHO,
 			 log_rpc_echo_handler, NULL);
 
 #endif
+
+static log_timestamp_t log_rpc_timestamp(void)
+{
+	return sys_clock_tick_get() + log_timestamp_delta;
+}
+
+static void log_rpc_set_time_handler(const struct nrf_rpc_group *group,
+				     struct nrf_rpc_cbor_ctx *ctx, void *handler_data)
+{
+	log_timestamp_t log_time;
+	log_timestamp_t local_time;
+	log_timestamp_t old_delta;
+
+	log_time = (log_timestamp_t)k_us_to_ticks_near64(nrf_rpc_decode_uint64(ctx));
+	local_time = (log_timestamp_t)sys_clock_tick_get();
+
+	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
+		nrf_rpc_err(-EBADMSG, NRF_RPC_ERR_SRC_RECV, group, LOG_RPC_CMD_SET_TIME,
+			    NRF_RPC_PACKET_TYPE_CMD);
+		return;
+	}
+
+	k_sched_lock();
+	old_delta = log_timestamp_delta;
+	log_timestamp_delta = log_time - local_time;
+	log_set_timestamp_func(log_rpc_timestamp, CONFIG_SYS_CLOCK_TICKS_PER_SEC);
+	k_sched_unlock();
+
+	LOG_WRN("Log time shifted by %" PRId64 " us",
+		((int64_t)log_timestamp_delta - (int64_t)old_delta) * USEC_PER_TICK);
+
+	nrf_rpc_rsp_send_void(group);
+}
+
+NRF_RPC_CBOR_CMD_DECODER(log_rpc_group, log_rpc_set_time_handler, LOG_RPC_CMD_SET_TIME,
+			 log_rpc_set_time_handler, NULL);

@@ -53,7 +53,7 @@ if (CONFIG_BOARD_HAS_NRF5_BOOTLOADER)
   ncs_add_partition_manager_config(pm.yml.nrf5_mbr)
 endif()
 
-if (CONFIG_SETTINGS_FCB OR CONFIG_SETTINGS_NVS OR CONFIG_SETTINGS_ZMS)
+if (CONFIG_SETTINGS_FCB OR CONFIG_SETTINGS_NVS OR CONFIG_SETTINGS_ZMS OR CONFIG_SETTINGS_ZMS_LEGACY)
   ncs_add_partition_manager_config(pm.yml.settings)
 endif()
 
@@ -65,7 +65,7 @@ if (CONFIG_NVS AND NOT CONFIG_SETTINGS_NVS)
   ncs_add_partition_manager_config(pm.yml.nvs)
 endif()
 
-if (CONFIG_ZMS AND NOT CONFIG_SETTINGS_ZMS)
+if (CONFIG_ZMS AND NOT (CONFIG_SETTINGS_ZMS OR CONFIG_SETTINGS_ZMS_LEGACY))
   ncs_add_partition_manager_config(pm.yml.zms)
 endif()
 
@@ -73,7 +73,7 @@ if (CONFIG_NRF_MODEM_LIB)
   ncs_add_partition_manager_config(pm.yml.libmodem)
 endif()
 
-if(CONFIG_SOC_NRF54L15_CPUAPP)
+if(CONFIG_SOC_NRF54L15_CPUAPP OR CONFIG_SOC_NRF54L05_CPUAPP OR CONFIG_SOC_NRF54L10_CPUAPP)
   ncs_add_partition_manager_config(pm.yml.bootconf)
 endif()
 
@@ -127,7 +127,7 @@ if (CONFIG_NRF_MODEM_LIB_TRACE_BACKEND_FLASH)
   ncs_add_partition_manager_config(pm.yml.modem_trace)
 endif()
 
-if (CONFIG_SOC_NRF54L15_CPUFLPR OR CONFIG_SOC_NRF54L09_ENGA_CPUFLPR OR CONFIG_SOC_NRF54L20_ENGA_CPUFLPR OR CONFIG_SOC_NRF7120_ENGA_CPUFLPR)
+if(CONFIG_SOC_NRF54L15_CPUFLPR OR CONFIG_SOC_NRF54L09_ENGA_CPUFLPR OR CONFIG_SOC_NRF54L20_ENGA_CPUFLPR OR CONFIG_SOC_NRF54LM20A_ENGA_CPUFLPR OR CONFIG_SOC_NRF54LV10A_ENGA_CPUFLPR OR CONFIG_SOC_NRF7120_ENGA_CPUFLPR)
   ncs_add_partition_manager_config(pm.yml.vpr_launcher)
 endif()
 

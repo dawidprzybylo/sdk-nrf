@@ -18,9 +18,12 @@
 #include "app_dfu.h"
 #include "app_factory_reset.h"
 #include "app_fp_adv.h"
-#include "app_motion_detector.h"
 #include "app_ring.h"
 #include "app_ui.h"
+
+#ifdef CONFIG_BT_FAST_PAIR_FMDN_DULT_MOTION_DETECTOR
+#include "app_motion_detector.h"
+#endif
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(fp_fmdn, LOG_LEVEL_INF);
@@ -227,6 +230,15 @@ static bool identifying_info_allow(struct bt_conn *conn, const struct bt_uuid *u
 	return false;
 }
 
+static void gatt_authorized_operation_indicate(struct bt_conn *conn,
+					       const struct bt_gatt_attr *attr)
+{
+	/* This function can be used to indicate important GATT operations to the user. */
+	if (!bt_uuid_cmp(attr->uuid, BT_UUID_DIS_FIRMWARE_REVISION)) {
+		LOG_INF("DIS Firmware Revision characteristic is being read");
+	}
+}
+
 static bool gatt_authorize(struct bt_conn *conn, const struct bt_gatt_attr *attr)
 {
 	bool authorized = true;
@@ -241,6 +253,10 @@ static bool gatt_authorize(struct bt_conn *conn, const struct bt_gatt_attr *attr
 	}
 
 	authorized = authorized && identifying_info_allow(conn, attr->uuid);
+
+	if (authorized) {
+		gatt_authorized_operation_indicate(conn, attr);
+	}
 
 	return authorized;
 }

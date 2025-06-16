@@ -47,10 +47,11 @@ Software requirements
 
 This guide requires the following software:
 
-* Toolchain Manager - For installing the full |NCS| toolchain.
+* The full |NCS| toolchain.
+  See :ref:`ug_nrf54h20_gs` for instructions on how to install the toolchain.
 * Microsoft's |VSC| - The recommended IDE for |NCS|.
 * |nRFVSC| - An add-on for |VSC| for developing |NCS| applications.
-* nRF Command Line Tools - Mandatory tools for working with |NCS|.
+* nRF Util.
 * **suit-generator** - A Python package by Nordic Semiconductor for generating SUIT envelopes and manifests.
 
 Download instructions are in the README file in the `suit-generator`_ repository.
@@ -229,8 +230,8 @@ The manifest templates have access to the following:
 * Application version
 
 Some of these values are stored in the Python dictionaries that are named after the target name.
-(Therefore, Python is used within the ``.jinja2`` files to fill in the necessary values in the manifest(s).)
-For example, for the ``sample.suit.smp_transfer.bt`` configuration (simple bluetooth configuration) in :ref:`nrf54h_suit_sample` there will be two variables available: ``application`` and ``radio``.
+(Therefore, Python is used within the :file:`.jinja2` files to fill in the necessary values in the manifests.)
+For example, for the :file:`sample.suit.smp_transfer.bt` configuration (simple bluetooth configuration) in :ref:`nrf54h_suit_sample` there will be two variables available: ``application`` and ``radio``.
 The target names (the names of these variables) can be changed using the :kconfig:option:`CONFIG_SUIT_ENVELOPE_TARGET` Kconfig option for a given image.
 Each variable is a Python dictionary type (``dict``) containing the following keys:
 

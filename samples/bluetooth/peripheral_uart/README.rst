@@ -21,9 +21,9 @@ The sample supports the following development kits:
 
 .. note::
    * The boards ``nrf52dk/nrf52810``, ``nrf52840dk/nrf52811``, and ``nrf52833dk/nrf52820`` only support the `Minimal sample variant`_.
-   * When used with :ref:`zephyr:thingy53_nrf5340`, the sample supports the MCUboot bootloader with serial recovery and SMP DFU over Bluetooth.
+   * When used with :zephyr:board:`thingy53`, the sample supports the MCUboot bootloader with serial recovery and SMP DFU over Bluetooth.
      Thingy:53 has no built-in SEGGER chip, so the UART 0 peripheral is not gated to a USB CDC virtual serial port.
-   * When used with :ref:`zephyr:nrf5340dk_nrf5340`, the sample might support the MCUboot bootloader with serial recovery of the networking core image.
+   * When used with :zephyr:board:`nrf5340dk`, the sample might support the MCUboot bootloader with serial recovery of the networking core image.
 
 The sample also requires using a compatible application for `Testing`_.
 You can use the `Bluetooth Low Energy app`_ for desktop or the `nRF Connect for Mobile`_ (or other similar applications, such as `nRF Blinky`_ or `nRF Toolbox`_).
@@ -180,9 +180,6 @@ Building and running
 
 .. include:: /includes/nRF54H20_erase_UICR.txt
 
-.. note::
-   |54H_engb_2_8|
-
 Experimental nRF54H20 SoC radio core only build
 ===============================================
 
@@ -265,60 +262,150 @@ To perform the test, complete the following steps:
 
    .. group-tab:: nRF21, nRF52 and nRF53 DKs
 
-      1. Connect the device to the computer to access UART 0.
-         If you use a development kit, UART 0 is forwarded as a COM port (Windows) or ttyACM device (Linux) after you connect the development kit over USB.
-         If you use Thingy:53, you must attach the debug board and connect an external USB to UART converter.
-      #. |connect_terminal|
-      #. Optionally, you can display debug messages.
-         See :ref:`peripheral_uart_debug` for details.
-      #. Install and start the `nRF Connect for Mobile`_ application on your smartphone or tablet.
-      #. Connect to the device using nRF Connect for Mobile.
-         Observe that **LED 2** is lit.
-      #. Optionally, pair or bond with the device with MITM protection.
-         This requires using the passkey value displayed in debug messages.
-         See :ref:`peripheral_uart_debug` for details on how to access debug messages.
-         To confirm pairing or bonding, press **Button 1** on the device and accept the passkey value on the smartphone.
-      #. In the application, observe that the services are shown in the connected device.
-      #. Select the UART RX characteristic value in nRF Connect for Mobile.
-         You can write to the UART RX and get the text displayed on the COM listener.
-      #. Type "0123456789" and tap :guilabel:`SEND`.
-         Verify that the text "0123456789" is displayed on the COM listener.
-      #. Tap the three-dot menu below the device name, and select **Enable CCCDs**.
-         This enables the notifications on the UART TX characteristic on the peripheral (DK) to allow sending UART characters to the phone or tablet.
-      #. To send data from the device to your phone or tablet, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
-         Observe that a notification is sent to the peer.
-      #. Disconnect the device in nRF Connect for Mobile.
-         Observe that **LED 2** turns off.
+      .. tabs::
+
+         .. group-tab:: Android
+
+            1. Connect the device to the computer to access UART 0.
+               If you use a development kit, UART 0 is forwarded as a COM port (Windows) or ttyACM device (Linux) after you connect the development kit over USB.
+               If you use Thingy:53, you must attach the debug board and connect an external USB to UART converter.
+            #. |connect_terminal|
+            #. Optionally, you can display debug messages.
+               See :ref:`peripheral_uart_debug` for details.
+            #. Install and start the `nRF Connect for Mobile`_ application on your Android device or tablet.
+            #. If the application does not automatically start scanning, tap the Play icon in the upper right corner.
+            #. Connect to the device using nRF Connect for Mobile.
+
+               Observe that **LED 2** is lit.
+            #. Optionally, pair or bond with the device with MITM protection.
+               This requires using the passkey value displayed in debug messages.
+               See :ref:`peripheral_uart_debug` for details on how to access debug messages.
+               To confirm pairing or bonding, press **Button 1** on the device and accept the passkey value on the smartphone.
+            #. In the application, observe that the services are shown in the connected device.
+            #. Select the **UART RX characteristic** option in nRF Connect for Mobile and tap the up arrow button.
+               You can write to the UART RX and get the text displayed on the COM listener.
+            #. Type "0123456789" and tap :guilabel:`SEND`.
+
+               Verify that the text "0123456789" is displayed on the COM listener.
+            #. To send data from the device to your phone or tablet, in the terminal emulator connected to the sample, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
+
+               The text is sent through the development kit to your mobile device over a Bluetooth LE link.
+            #. On your Android device or tablet, tap the three-dot menu next to **Disconnect** and select **Show log**.
+
+               The device displays the text in the nRF Connect for Mobile log.
+            #. Disconnect the device in nRF Connect for Mobile.
+
+               Observe that **LED 2** turns off.
+
+         .. group-tab:: iOS
+
+            1. Connect the device to the computer to access UART 0.
+               If you use a development kit, UART 0 is forwarded as a COM port (Windows) or ttyACM device (Linux) after you connect the development kit over USB.
+               If you use Thingy:53, you must attach the debug board and connect an external USB to UART converter.
+            #. |connect_terminal|
+            #. Optionally, you can display debug messages.
+               See :ref:`peripheral_uart_debug` for details.
+            #. Install and start the `nRF Connect for Mobile`_ application on your iOS device or tablet.
+            #. If the application does not automatically start scanning, tap the Play icon in the upper right corner.
+            #. Connect to the device using nRF Connect for Mobile.
+
+               Observe that **LED 2** is lit.
+            #. Optionally, pair or bond with the device with MITM protection.
+               This requires using the passkey value displayed in debug messages.
+               See :ref:`peripheral_uart_debug` for details on how to access debug messages.
+               To confirm pairing or bonding, press **Button 1** on the device and accept the passkey value on the smartphone.
+            #. In the application, observe that the services are shown in the connected device.
+            #. Select the **UART RX characteristic** option in nRF Connect for Mobile and tap the up arrow button.
+
+               The **Write Value** window opens.
+               You can write to the UART RX and get the text displayed on the COM listener.
+            #. Type "0123456789" and tap **Write**.
+
+               Verify that the text "0123456789" is displayed on the COM listener.
+            #. To send data from the device to your phone or tablet, in the terminal emulator connected to the sample, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
+
+               The text is sent through the development kit to your mobile device over a Bluetooth LE link.
+            #. On your iOS device or tablet, select the **Log** tab.
+
+               The device displays the text in the nRF Connect for Mobile log.
+            #. Disconnect the device in nRF Connect for Mobile.
+
+               Observe that **LED 2** turns off.
 
    .. group-tab:: nRF54 DKs
 
       .. note::
           |nrf54_buttons_leds_numbering|
 
-      1. Connect the device to the computer to access UART 0.
-         If you use a development kit, UART 0 is forwarded as a COM port (Windows) or ttyACM device (Linux) after you connect the development kit over USB.
-         If you use Thingy:53, you must attach the debug board and connect an external USB to UART converter to it.
-      #. |connect_terminal|
-      #. Optionally, you can display debug messages.
-         See :ref:`peripheral_uart_debug` for details.
-      #. Install and start the `nRF Connect for Mobile`_ application on your smartphone or tablet.
-      #. Connect to the device using nRF Connect for Mobile.
-         Observe that **LED 1** is lit.
-      #. Optionally, pair or bond with the device with MITM protection.
-         This requires using the passkey value displayed in debug messages.
-         See :ref:`peripheral_uart_debug` for details on how to access debug messages.
-         To confirm pairing or bonding, press **Button 0** on the device and accept the passkey value on the smartphone.
-      #. In the application, observe that the services are shown in the connected device.
-      #. Select the UART RX characteristic value in nRF Connect for Mobile.
-         You can write to the UART RX and get the text displayed on the COM listener.
-      #. Type "0123456789" and tap :guilabel:`SEND`.
-         Verify that the text "0123456789" is displayed on the COM listener.
-      #. Tap the three-dot menu below the device name, and select **Enable CCCDs**.
-         This enables the notifications on the UART TX characteristic on the peripheral (DK) to allow sending UART characters to the phone or tablet.
-      #. To send data from the device to your phone or tablet, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
-         Observe that a notification is sent to the peer.
-      #. Disconnect the device in nRF Connect for Mobile.
-         Observe that **LED 1** turns off.
+      .. tabs::
+
+         .. group-tab:: Android
+
+            1. Connect the device to the computer to access UART 0.
+               If you use a development kit, UART 0 is forwarded as a COM port (Windows) or ttyACM device (Linux) after you connect the development kit over USB.
+               If you use Thingy:53, you must attach the debug board and connect an external USB to UART converter.
+            #. |connect_terminal|
+            #. Optionally, you can display debug messages.
+               See :ref:`peripheral_uart_debug` for details.
+            #. Install and start the `nRF Connect for Mobile`_ application on your Android device or tablet.
+            #. If the application does not automatically start scanning, tap the Play icon in the upper right corner.
+            #. Connect to the device using nRF Connect for Mobile.
+
+               Observe that **LED 1** is lit.
+            #. Optionally, pair or bond with the device with MITM protection.
+               This requires using the passkey value displayed in debug messages.
+               See :ref:`peripheral_uart_debug` for details on how to access debug messages.
+               To confirm pairing or bonding, press **Button 0** on the device and accept the passkey value on the smartphone.
+            #. In the application, observe that the services are shown in the connected device.
+            #. Select the **UART RX characteristic** option in nRF Connect for Mobile and tap the up arrow button.
+               You can write to the UART RX and get the text displayed on the COM listener.
+            #. Type "0123456789" and tap :guilabel:`SEND`.
+
+               Verify that the text "0123456789" is displayed on the COM listener.
+            #. To send data from the device to your phone or tablet, in the terminal emulator connected to the sample, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
+
+               The text is sent through the development kit to your mobile device over a Bluetooth LE link.
+            #. On your Android device or tablet, tap the three-dot menu next to **Disconnect** and select **Show log**.
+
+               The device displays the text in the nRF Connect for Mobile log.
+            #. Disconnect the device in nRF Connect for Mobile.
+
+               Observe that **LED 1** turns off.
+
+         .. group-tab:: iOS
+
+            1. Connect the device to the computer to access UART 0.
+               If you use a development kit, UART 0 is forwarded as a COM port (Windows) or ttyACM device (Linux) after you connect the development kit over USB.
+               If you use Thingy:53, you must attach the debug board and connect an external USB to UART converter.
+            #. |connect_terminal|
+            #. Optionally, you can display debug messages.
+               See :ref:`peripheral_uart_debug` for details.
+            #. Install and start the `nRF Connect for Mobile`_ application on your iOS device or tablet.
+            #. If the application does not automatically start scanning, tap the Play icon in the upper right corner.
+            #. Connect to the device using nRF Connect for Mobile.
+
+               Observe that **LED 1** is lit.
+            #. Optionally, pair or bond with the device with MITM protection.
+               This requires using the passkey value displayed in debug messages.
+               See :ref:`peripheral_uart_debug` for details on how to access debug messages.
+               To confirm pairing or bonding, press **Button 0** on the device and accept the passkey value on the smartphone.
+            #. In the application, observe that the services are shown in the connected device.
+            #. Select the **UART RX characteristic** option in nRF Connect for Mobile and tap the up arrow button.
+
+               The **Write Value** window opens.
+               You can write to the UART RX and get the text displayed on the COM listener.
+            #. Type "0123456789" and tap **Write**.
+
+               Verify that the text "0123456789" is displayed on the COM listener.
+            #. To send data from the device to your phone or tablet, in the terminal emulator connected to the sample, enter any text, for example, "Hello", and press Enter to see it on the COM listener.
+
+               The text is sent through the development kit to your mobile device over a Bluetooth LE link.
+            #. On your iOS device or tablet, select the **Log** tab.
+
+               The device displays the text in the nRF Connect for Mobile log.
+            #. Disconnect the device in nRF Connect for Mobile.
+
+               Observe that **LED 1** turns off.
 
 .. _nrf52_computer_testing:
 .. _peripheral_uart_testing_ble:
@@ -344,7 +431,7 @@ To perform the test, complete the following steps:
       When the connection is established, the device appears in the main view.
 
 #. Click :guilabel:`Start scan`.
-#. Find the DK you want to test and click the corresponding :guilabel:`Connect` button.
+#. Find the development kit you want to test and click the corresponding :guilabel:`Connect` button.
 
    The default name for the Peripheral UART sample is *Nordic_UART_Service*.
 
@@ -352,11 +439,11 @@ To perform the test, complete the following steps:
 #. Write ``30 31 32 33 34 35 36 37 38 39`` (the hexadecimal value for the string "0123456789") and click :guilabel:`Write`.
 
    The data is transmitted over Bluetooth LE from the app to the DK that runs the Peripheral UART sample.
-   The terminal emulator connected to the DK then displays ``"0123456789"``.
+   The terminal emulator connected to the development kit then displays ``"0123456789"``.
 
 #. In the terminal emulator, enter any text, for example ``Hello``.
 
-   The data is transmitted to the DK that runs the Peripheral UART sample.
+   The data is transmitted to the development kit that runs the Peripheral UART sample.
    The **UART TX** characteristic displayed in the app changes to the corresponding ASCII value.
    For example, the value for ``Hello`` is ``48 65 6C 6C 6F``.
 

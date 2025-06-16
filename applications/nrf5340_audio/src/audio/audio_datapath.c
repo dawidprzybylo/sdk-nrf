@@ -19,6 +19,7 @@
 
 #include "zbus_common.h"
 #include "macros_common.h"
+#include "led_assignments.h"
 #include "led.h"
 #include "audio_i2s.h"
 #include "sw_codec_select.h"
@@ -90,6 +91,9 @@ LOG_MODULE_REGISTER(audio_datapath, CONFIG_AUDIO_DATAPATH_LOG_LEVEL);
 /* How often to print under-run warning */
 #define UNDERRUN_LOG_INTERVAL_BLKS 5000
 
+NET_BUF_POOL_FIXED_DEFINE(pool_i2s_rx, FIFO_NUM_BLKS, BLK_STEREO_SIZE_OCTETS,
+			  sizeof(struct audio_metadata), NULL);
+
 enum drift_comp_state {
 	DRIFT_STATE_INIT,   /* Waiting for data to be received */
 	DRIFT_STATE_CALIB,  /* Calibrate and zero out local delay */
@@ -124,7 +128,7 @@ static struct {
 	void *decoded_data;
 
 	struct {
-		struct data_fifo *fifo;
+		struct k_msgq *audio_q;
 	} in;
 
 	struct {
@@ -354,9 +358,9 @@ static void pres_comp_state_set(enum pres_comp_state new_state)
 	/* NOTE: The string below is used by the Nordic CI system */
 	LOG_INF("Pres comp state: %s", pres_comp_state_names[new_state]);
 	if (new_state == PRES_STATE_LOCKED) {
-		ret = led_on(LED_APP_2_GREEN);
+		ret = led_on(LED_AUDIO_SYNC_STATUS);
 	} else {
-		ret = led_off(LED_APP_2_GREEN);
+		ret = led_off(LED_AUDIO_SYNC_STATUS);
 	}
 	ERR_CHK(ret);
 }
@@ -688,51 +692,65 @@ static void audio_datapath_i2s_blk_complete(uint32_t frame_start_ts_us, uint32_t
 	}
 
 	/********** I2S RX **********/
-	static uint32_t *rx_buf;
 	static int prev_ret;
+	struct net_buf *rx_audio_block = NULL;
 
 	if (IS_ENABLED(CONFIG_STREAM_BIDIRECTIONAL) || (CONFIG_AUDIO_DEV == GATEWAY)) {
-		/* Lock last filled buffer into message queue */
-		if (rx_buf_released != NULL) {
-			ret = data_fifo_block_lock(ctrl_blk.in.fifo, (void **)&rx_buf_released,
-						   BLOCK_SIZE_BYTES);
-
-			ERR_CHK_MSG(ret, "Unable to lock block RX");
+		if (rx_buf_released == NULL) {
+			/* No RX data available */
+			ERR_CHK_MSG(-ENOMEM, "No RX data available");
 		}
 
-		/* Get new empty buffer to send to I2S HW */
-		ret = data_fifo_pointer_first_vacant_get(ctrl_blk.in.fifo, (void **)&rx_buf,
-							 K_NO_WAIT);
-		if (ret == 0 && prev_ret == -ENOMEM) {
-			LOG_WRN("I2S RX continuing stream");
-			prev_ret = ret;
+		if (k_msgq_num_free_get(ctrl_blk.in.audio_q) == 0 || pool_i2s_rx.avail_count == 0) {
+			ret = -ENOMEM;
+		} else {
+			ret = 0;
 		}
 
 		/* If RX FIFO is filled up */
 		if (ret == -ENOMEM) {
-			void *data;
-			size_t size;
+			struct net_buf *stale_i2s_data;
 
 			if (ret != prev_ret) {
 				LOG_WRN("I2S RX overrun. Single msg");
 				prev_ret = ret;
 			}
 
-			ret = data_fifo_pointer_last_filled_get(ctrl_blk.in.fifo, &data, &size,
-								K_NO_WAIT);
+			ret = k_msgq_get(ctrl_blk.in.audio_q, (void *)&stale_i2s_data, K_NO_WAIT);
 			ERR_CHK(ret);
 
-			data_fifo_block_free(ctrl_blk.in.fifo, data);
+			net_buf_unref(stale_i2s_data);
 
-			ret = data_fifo_pointer_first_vacant_get(ctrl_blk.in.fifo, (void **)&rx_buf,
-								 K_NO_WAIT);
+		} else if (ret == 0 && prev_ret == -ENOMEM) {
+			LOG_WRN("I2S RX continuing stream");
+			prev_ret = ret;
 		}
 
-		ERR_CHK_MSG(ret, "RX failed to get block");
+		rx_audio_block = net_buf_alloc(&pool_i2s_rx, K_NO_WAIT);
+		if (rx_audio_block == NULL) {
+			ERR_CHK_MSG(-ENOMEM, "Out of RX buffers for I2S");
+		}
+
+		/* Store RX buffer in net_buf */
+		net_buf_add_mem(rx_audio_block, rx_buf_released, BLK_STEREO_SIZE_OCTETS);
+
+		struct audio_metadata *meta = net_buf_user_data(rx_audio_block);
+
+		/* Add meta data */
+		meta->data_coding = PCM;
+		meta->data_len_us = 1000;
+		meta->sample_rate_hz = CONFIG_AUDIO_SAMPLE_RATE_HZ;
+		meta->bits_per_sample = CONFIG_AUDIO_BIT_DEPTH_BITS;
+		meta->carried_bits_per_sample = CONFIG_AUDIO_BIT_DEPTH_BITS;
+		meta->locations = BT_AUDIO_LOCATION_FRONT_LEFT | BT_AUDIO_LOCATION_FRONT_RIGHT;
+		meta->bad_data = false;
+
+		ret = k_msgq_put(ctrl_blk.in.audio_q, (void *)&rx_audio_block, K_NO_WAIT);
+		ERR_CHK_MSG(ret, "Unable to put RX audio block into queue");
 	}
 
 	/*** Data exchange ***/
-	audio_i2s_set_next_buf(tx_buf, rx_buf);
+	audio_i2s_set_next_buf(tx_buf, rx_buf_released);
 
 	/*** Drift compensation ***/
 	if (ctrl_blk.drift_comp.enabled) {
@@ -742,13 +760,13 @@ static void audio_datapath_i2s_blk_complete(uint32_t frame_start_ts_us, uint32_t
 
 static void audio_datapath_i2s_start(void)
 {
-	int ret;
-
 	/* Double buffer I2S */
 	uint8_t *tx_buf_one = NULL;
 	uint8_t *tx_buf_two = NULL;
-	uint32_t *rx_buf_one = NULL;
-	uint32_t *rx_buf_two = NULL;
+
+	/* Buffers used for I2S RX. Used interchangeably by I2S. */
+	static uint32_t rx_buf_0[BLK_STEREO_SIZE_OCTETS];
+	static uint32_t rx_buf_1[BLK_STEREO_SIZE_OCTETS];
 
 	/* TX */
 	if (IS_ENABLED(CONFIG_STREAM_BIDIRECTIONAL) || (CONFIG_AUDIO_DEV == HEADSET)) {
@@ -761,27 +779,9 @@ static void audio_datapath_i2s_start(void)
 				     .fifo[ctrl_blk.out.cons_blk_idx * BLK_STEREO_NUM_SAMPS];
 	}
 
-	/* RX */
-	if (IS_ENABLED(CONFIG_STREAM_BIDIRECTIONAL) || (CONFIG_AUDIO_DEV == GATEWAY)) {
-		uint32_t alloced_cnt;
-		uint32_t locked_cnt;
-
-		ret = data_fifo_num_used_get(ctrl_blk.in.fifo, &alloced_cnt, &locked_cnt);
-		if (alloced_cnt || locked_cnt || ret) {
-			ERR_CHK_MSG(-ENOMEM, "FIFO is not empty!");
-		}
-
-		ret = data_fifo_pointer_first_vacant_get(ctrl_blk.in.fifo, (void **)&rx_buf_one,
-							 K_NO_WAIT);
-		ERR_CHK_MSG(ret, "RX failed to get block");
-		ret = data_fifo_pointer_first_vacant_get(ctrl_blk.in.fifo, (void **)&rx_buf_two,
-							 K_NO_WAIT);
-		ERR_CHK_MSG(ret, "RX failed to get block");
-	}
-
 	/* Start I2S */
-	audio_i2s_start(tx_buf_one, rx_buf_one);
-	audio_i2s_set_next_buf(tx_buf_two, rx_buf_two);
+	audio_i2s_start(tx_buf_one, rx_buf_0);
+	audio_i2s_set_next_buf(tx_buf_two, rx_buf_1);
 }
 
 static void audio_datapath_i2s_stop(void)
@@ -898,29 +898,29 @@ void audio_datapath_pres_delay_us_get(uint32_t *delay_us)
 	*delay_us = ctrl_blk.pres_comp.pres_delay_us;
 }
 
-void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref_us, bool bad_frame,
-			       uint32_t recv_frame_ts_us)
+void audio_datapath_stream_out(struct net_buf *audio_frame)
 {
 	if (!ctrl_blk.stream_started) {
 		LOG_WRN("Stream not started");
 		return;
 	}
 
-	/*** Check incoming data ***/
-
-	if (!buf) {
+	if (audio_frame == NULL) {
 		LOG_ERR("Buffer pointer is NULL");
 	}
 
-	if (sdu_ref_us == ctrl_blk.prev_pres_sdu_ref_us && sdu_ref_us != 0) {
-		LOG_WRN("Duplicate sdu_ref_us (%d) - Dropping audio frame", sdu_ref_us);
+	/*** Check incoming data ***/
+	struct audio_metadata *meta = net_buf_user_data(audio_frame);
+
+	if (meta->reference_ts_us == ctrl_blk.prev_pres_sdu_ref_us && meta->reference_ts_us != 0) {
+		LOG_WRN("Duplicate sdu_ref_us (%d) - Dropping audio frame", meta->reference_ts_us);
 		return;
 	}
 
 	bool sdu_ref_not_consecutive = false;
 
 	if (ctrl_blk.prev_pres_sdu_ref_us) {
-		uint32_t sdu_ref_delta_us = sdu_ref_us - ctrl_blk.prev_pres_sdu_ref_us;
+		uint32_t sdu_ref_delta_us = meta->reference_ts_us - ctrl_blk.prev_pres_sdu_ref_us;
 
 		/* Check if the delta is from two consecutive frames */
 		if (sdu_ref_delta_us <
@@ -934,8 +934,8 @@ void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref
 					sdu_ref_delta_us);
 
 				/* Estimate sdu_ref_us */
-				sdu_ref_us = ctrl_blk.prev_pres_sdu_ref_us +
-					     CONFIG_AUDIO_FRAME_DURATION_US;
+				meta->reference_ts_us = ctrl_blk.prev_pres_sdu_ref_us +
+							CONFIG_AUDIO_FRAME_DURATION_US;
 			}
 		} else {
 			LOG_INF("sdu_ref_us not from consecutive frames (diff: %d us)",
@@ -944,11 +944,11 @@ void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref
 		}
 	}
 
-	ctrl_blk.prev_pres_sdu_ref_us = sdu_ref_us;
+	ctrl_blk.prev_pres_sdu_ref_us = meta->reference_ts_us;
 
 	/*** Presentation compensation ***/
 	if (ctrl_blk.pres_comp.enabled) {
-		audio_datapath_presentation_compensation(recv_frame_ts_us, sdu_ref_us,
+		audio_datapath_presentation_compensation(meta->data_rx_ts_us, meta->reference_ts_us,
 							 sdu_ref_not_consecutive);
 	}
 
@@ -957,7 +957,7 @@ void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref
 	int ret;
 	size_t pcm_size;
 
-	ret = sw_codec_decode(buf, size, bad_frame, &ctrl_blk.decoded_data, &pcm_size);
+	ret = sw_codec_decode(audio_frame, &ctrl_blk.decoded_data, &pcm_size);
 	if (ret) {
 		LOG_WRN("SW codec decode error: %d", ret);
 	}
@@ -999,7 +999,7 @@ void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref
 		}
 
 		/* Record producer block start reference */
-		ctrl_blk.out.prod_blk_ts[out_blk_idx] = recv_frame_ts_us + (i * BLK_PERIOD_US);
+		ctrl_blk.out.prod_blk_ts[out_blk_idx] = meta->data_rx_ts_us + (i * BLK_PERIOD_US);
 
 		out_blk_idx = NEXT_IDX(out_blk_idx);
 	}
@@ -1007,9 +1007,9 @@ void audio_datapath_stream_out(const uint8_t *buf, size_t size, uint32_t sdu_ref
 	ctrl_blk.out.prod_blk_idx = out_blk_idx;
 }
 
-int audio_datapath_start(struct data_fifo *fifo_rx)
+int audio_datapath_start(struct k_msgq *audio_q_rx)
 {
-	__ASSERT_NO_MSG(fifo_rx != NULL);
+	__ASSERT_NO_MSG(audio_q_rx != NULL);
 
 	if (!ctrl_blk.datapath_initialized) {
 		LOG_WRN("Audio datapath not initialized");
@@ -1017,7 +1017,7 @@ int audio_datapath_start(struct data_fifo *fifo_rx)
 	}
 
 	if (!ctrl_blk.stream_started) {
-		ctrl_blk.in.fifo = fifo_rx;
+		ctrl_blk.in.audio_q = audio_q_rx;
 
 		/* Clear counters and mute initial audio */
 		memset(&ctrl_blk.out, 0, sizeof(ctrl_blk.out));

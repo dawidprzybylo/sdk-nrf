@@ -49,13 +49,14 @@ LOG_MODULE_REGISTER(nrf_provisioning_coap, CONFIG_NRF_PROVISIONING_LOG_LEVEL);
 #define CMDS_AFTER "after=%s"
 #define CMDS_MAX_RX_SZ "rxMaxSize=%s"
 #define CMDS_MAX_TX_SZ "txMaxSize=%s"
-#define CMDS_API_TEMPLATE (CMDS_PATH "?" CMDS_AFTER "&" CMDS_MAX_RX_SZ "&" CMDS_MAX_TX_SZ)
+#define CMDS_LIMIT "limit=%s"
+#define CMDS_API_TEMPLATE (CMDS_PATH "?" \
+	CMDS_AFTER "&" CMDS_MAX_RX_SZ "&" CMDS_MAX_TX_SZ "&" CMDS_LIMIT)
 
 #define RETRY_AMOUNT 10
 static const char *resp_path = "p/rsp";
 static const char *dtls_suspend = "/.dtls/suspend";
 
-static struct zsock_addrinfo *address;
 static struct coap_client client;
 static bool socket_keep_open;
 
@@ -169,7 +170,8 @@ static int dtls_setup(int fd)
 
 static int socket_connect(int *const fd)
 {
-	static struct zsock_addrinfo hints;
+	struct zsock_addrinfo hints = {};
+	struct zsock_addrinfo *address = NULL;
 	int st;
 	int ret = 0;
 	struct sockaddr *sa;
@@ -225,6 +227,10 @@ static int socket_connect(int *const fd)
 	LOG_INF("Connected");
 
 clean_up:
+
+	if (address) {
+		zsock_freeaddrinfo(address);
+	}
 
 	if (ret) {
 		if (*fd > -1) {
@@ -465,6 +471,8 @@ static int authenticate(struct coap_client *client, const char *auth_token,
 			   coap_ctx->code == COAP_RESPONSE_CODE_FORBIDDEN) {
 			LOG_ERR("Unauthorized, code %d", coap_ctx->code);
 			return -EACCES;
+		} else if (coap_ctx->code < 0) {
+			return coap_ctx->code;
 		}
 		LOG_ERR("Unknown result code %d", coap_ctx->code);
 		return -ENOTSUP;
@@ -478,17 +486,18 @@ static int request_commands(struct coap_client *client,
 {
 	int ret;
 	char after[NRF_PROVISIONING_CORRELATION_ID_SIZE];
-	char *rx_buf_sz = STRINGIFY(CONFIG_NRF_PROVISIONING_RX_BUF_SZ);
-	char *tx_buf_sz = STRINGIFY(CONFIG_NRF_PROVISIONING_TX_BUF_SZ);
+	const char *rx_buf_sz = STRINGIFY(CONFIG_NRF_PROVISIONING_RX_BUF_SZ);
+	const char *tx_buf_sz = STRINGIFY(CONFIG_NRF_PROVISIONING_TX_BUF_SZ);
+	const char *limit = STRINGIFY(CONFIG_NRF_PROVISIONING_CBOR_RECORDS);
 	char cmd[sizeof(CMDS_API_TEMPLATE) + NRF_PROVISIONING_CORRELATION_ID_SIZE +
-		 strlen(rx_buf_sz) + strlen(tx_buf_sz)];
+		 strlen(rx_buf_sz) + strlen(tx_buf_sz) + strlen(limit)];
 
 	LOG_DBG("Get commands");
 
 	memcpy(after, nrf_provisioning_codec_get_latest_cmd_id(),
 	       NRF_PROVISIONING_CORRELATION_ID_SIZE);
 
-	ret = snprintk(cmd, sizeof(cmd), CMDS_API_TEMPLATE, after, rx_buf_sz, tx_buf_sz);
+	ret = snprintk(cmd, sizeof(cmd), CMDS_API_TEMPLATE, after, rx_buf_sz, tx_buf_sz, limit);
 
 	if ((ret < 0) || (ret >= sizeof(cmd))) {
 		LOG_ERR("Could not format URL");
@@ -528,6 +537,8 @@ static int send_response(struct coap_client *client,
 		} else if (coap_ctx->code == COAP_RESPONSE_CODE_BAD_REQUEST) {
 			LOG_ERR("Bad request");
 			return -EINVAL;
+		} else if (coap_ctx->code < 0) {
+			return coap_ctx->code;
 		}
 		LOG_ERR("Unknown result code %d", coap_ctx->code);
 		return -ENOTSUP;

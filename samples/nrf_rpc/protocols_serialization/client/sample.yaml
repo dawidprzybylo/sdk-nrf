@@ -4,6 +4,7 @@ sample:
     nRF RPC
 tests:
   sample.nrf_rpc.protocols_serialization.client.rpc_ble:
+    sysbuild: true
     build_only: true
     platform_allow:
       - nrf52840dk/nrf52840
@@ -17,6 +18,7 @@ tests:
       - nrf52840dk/nrf52840
       - nrf54l15dk/nrf54l15/cpuapp
   sample.nrf_rpc.protocols_serialization.client.rpc_ot:
+    sysbuild: true
     build_only: true
     platform_allow:
       - nrf52840dk/nrf52840
@@ -30,6 +32,7 @@ tests:
       - nrf52840dk/nrf52840
       - nrf54l15dk/nrf54l15/cpuapp
   sample.nrf_rpc.protocols_serialization.client.rpc:
+    sysbuild: true
     build_only: true
     platform_allow:
       - nrf52840dk/nrf52840
@@ -39,6 +42,20 @@ tests:
       - ci_samples_nrf_rpc
     extra_args: >
       SNIPPET="ble;openthread;debug;coex;log_rpc"
+    integration_platforms:
+      - nrf52840dk/nrf52840
+      - nrf54l15dk/nrf54l15/cpuapp
+  sample.nrf_rpc.protocols_serialization.client.rpc_ci:
+    sysbuild: true
+    build_only: true
+    platform_allow:
+      - nrf52840dk/nrf52840
+      - nrf54l15dk/nrf54l15/cpuapp
+    tags:
+      - ci_build
+      - ci_samples_nrf_rpc
+    extra_args: >
+      SNIPPET="ble;openthread;coex;log_rpc;ci-shell;zperf"
     integration_platforms:
       - nrf52840dk/nrf52840
       - nrf54l15dk/nrf54l15/cpuapp

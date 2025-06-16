@@ -18,7 +18,7 @@ The nRF70 Series devices support the following Wi-Fi enterprise security mode, `
 This mode uses the Extensible Authentication Protocol (EAP) with Transport Layer Security (TLS) for authentication.
 The client and the authentication server exchange certificates to authenticate each other.
 
-See `Zephyr Wi-Fi management`_ for more information on how to configure and use the Wi-Fi enterprise security mode.
+See :ref:`wifi_mgmt` for more information on how to configure and use the Wi-Fi enterprise security mode.
 
 
 .. _ug_nrf70_wifi_enterprise_mode:
@@ -33,7 +33,7 @@ Prerequisites
 
 To use this mode, ensure that the following prerequisites are met:
 
-* RADIUS server in addition to self-signed local certificate(s) and private key for both server-side and client-side (for EAP-TLS).
+* RADIUS server in addition to self-signed local certificates and private key for both server-side and client-side (for EAP-TLS).
 * Wi-Fi Access Point (AP) that supports Enterprise mode.
 * nRF70 Series device with certificates for Enterprise mode available in the :file:`zephyr/samples/net/wifi/test_certs` folder.
 
@@ -120,7 +120,7 @@ To  build the hostapd executable, complete the following steps:
       # RADIUS clients configuration
       radius_server_clients=hostapd.radius_clients
       radius_server_auth_port=1812
-      # Enable eap_server when we use hostapd integrated EAP server instead of external RADIUS authentication
+      # Enable eap_server when using hostapd integrated EAP server instead of external RADIUS authentication
       eap_server=1
       # EAP server user database
       eap_user_file=hostapd.eap_user_tls
@@ -181,7 +181,7 @@ To build the nRF70 Series DK for the :ref:`wifi_shell_sample` sample with Enterp
 
       cd nrf/samples/wifi/shell
 
-      west build -p -b nrf7002dk/nrf5340/cpuapp -- -DEXTRA_CONF_FILE=overlay-enterprise.conf -DCONFIG_WIFI_NM_WPA_SUPPLICANT_LOG_LEVEL_DBG=y -DCONFIG_LOG_MODE_IMMEDIATE=y
+      west build -p -b nrf7002dk/nrf5340/cpuapp -S shell_SNIPPET=wifi-enterprise -- -DCONFIG_WIFI_NM_WPA_SUPPLICANT_LOG_LEVEL_DBG=y -DCONFIG_LOG_MODE_IMMEDIATE=y
 
       west flash
 

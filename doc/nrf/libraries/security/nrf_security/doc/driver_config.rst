@@ -1,34 +1,99 @@
+.. _psa_crypto_support:
 .. _nrf_security_driver_config:
 
-Feature configurations and driver support
-#########################################
+Configuring nRF Security with PSA Crypto APIs
+#############################################
 
 .. contents::
    :local:
    :depth: 2
 
-This section covers the configurations available when using PSA drivers.
+.. psa_crypto_support_def_start
+
+The PSA Crypto in the |NCS| provides secure crypto operations through standardized :ref:`Platform Security Architecture <ug_psa_certified_api_overview>`.
+It implements the cryptographic features either in software, or using hardware accelerators.
+
+The PSA Crypto API is enabled by default when you enable nRF Security with the :kconfig:option:`CONFIG_NRF_SECURITY` Kconfig option.
+
+.. psa_crypto_support_def_end
+
+.. psa_crypto_support_tfm_build_start
+
+When you :ref:`build with TF-M<ug_tfm>`, `PSA Certified Crypto API`_ v1.0 is implemented.
+Otherwise, when you build without TF-M, v1.2 of the API is used.
+
+.. psa_crypto_support_tfm_build_end
+
+This page covers the configurations available when using the :ref:`nrf_security_drivers` compatible with the PSA Crypto API.
+If you work with the legacy crypto toolbox, see :ref:`legacy_crypto_support`.
+
+Configuring single drivers
+**************************
+
+The nRF Security subsystem allows you to configure individual drivers for cryptographic operations.
+Each driver can be enabled or disabled independently through Kconfig options.
+
+Enabling the Arm CryptoCell nrf_cc3xx driver
+============================================
+
+To enable the :ref:`Arm CryptoCell nrf_cc3xx driver <nrf_security_drivers_cc3xx>`, set the :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CC3XX` Kconfig option.
+
+Using the Arm CryptoCell nrf_cc3xx driver
+-----------------------------------------
+
+To use the :ref:`nrf_cc3xx_mbedcrypto_readme` PSA driver, the Arm CryptoCell CC310/CC312 hardware must be first initialized.
+
+The Arm CryptoCell hardware compatible with nrf_cc3xx is initialized in the :file:`hw_cc3xx.c` file, located under :file:`nrf/drivers/hw_cc3xx/`, and is controlled with the :kconfig:option:`CONFIG_HW_CC3XX` Kconfig option.
+The Kconfig option has a default value of ``y`` when nrf_cc3xx is available in the SoC.
+
+Enabling the nrf_oberon driver
+==============================
+
+To enable the :ref:`nrf_security_drivers_oberon`, set the :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_OBERON` Kconfig option.
+
+Enabling the CRACEN driver
+==========================
+
+To enable the :ref:`nrf_security_drivers_cracen`, set the :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CRACEN` Kconfig option.
+
+The nrf_oberon driver may then be disabled by using the Kconfig option :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_OBERON` (``CONFIG_PSA_CRYPTO_DRIVER_OBERON=n``).
+
+.. note::
+   On nRF54L Series devices, CRACEN is the only source of entropy.
+   Therefore, it is not possible to disable the :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CRACEN` Kconfig option when the Zephyr entropy driver is enabled.
+
+Configuring cryptographic features
+**********************************
+
+You can enable a cryptographic feature or algorithm using `CONFIG_PSA_WANT_ALG_*`_ Kconfig options, which are specific for PSA Crypto API configurations.
+For example, to enable the AES algorithm, set the :kconfig:option:`CONFIG_PSA_WANT_ALG_AES` Kconfig option.
 
 .. _nrf_security_drivers_config_multiple:
 
 Configuring multiple drivers
 ****************************
 
-Multiple PSA drivers can be enabled at the same time, with added support for fine-grained control of which drivers implement support for cryptographic features.
+The nRF Security subsystem supports multiple enabled PSA Crypto API drivers at the same time.
+If you do, you can fine-tune which drivers implement support for cryptographic features.
+This mechanism is intended to extend the available feature set of hardware-accelerated cryptography or to provide alternative implementations of the PSA Crypto APIs.
 
-To enable a PSA driver, set the configurations in the following table:
+Enabling more than one PSA driver might add support for additional key sizes or modes of operation.
 
-+---------------+--------------------------------------------------+-----------------------------------------------------+
-| PSA driver    | Configuration option                             | Notes                                               |
-+===============+==================================================+=====================================================+
-| nrf_cc3xx     | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CC3XX` | Only on nRF52840, nRF91 Series, and nRF5340 devices |
-+---------------+--------------------------------------------------+-----------------------------------------------------+
-| nrf_cracen    | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CRACEN`| Only on nRF54L Series devices                       |
-+---------------+--------------------------------------------------+-----------------------------------------------------+
-| nrf_oberon    | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_OBERON`|                                                     |
-+---------------+--------------------------------------------------+-----------------------------------------------------+
+You can disable specific features on the PSA driver level to optimize the code size.
 
-If multiple drivers are enabled, the first ordered item in this table takes precedence for an enabled cryptographic feature, unless the driver does not enable or support it.
+To enable a specific PSA Crypto API driver, set the respective Kconfig option, as listed in the following table:
+
++-----------------------+---------------------------------------------------+-----------------------------------------------------+
+| PSA Crypto API driver |               Configuration option                |                        Notes                        |
++=======================+===================================================+=====================================================+
+| nrf_cc3xx             | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CC3XX`  | Only on nRF52840, nRF91 Series, and nRF5340 devices |
++-----------------------+---------------------------------------------------+-----------------------------------------------------+
+| CRACEN                | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_CRACEN` | Only on nRF54L Series devices                       |
++-----------------------+---------------------------------------------------+-----------------------------------------------------+
+| nrf_oberon            | :kconfig:option:`CONFIG_PSA_CRYPTO_DRIVER_OBERON` |                                                     |
++-----------------------+---------------------------------------------------+-----------------------------------------------------+
+
+If you enable multiple drivers, the item higher in the list takes precedence for an enabled cryptographic feature, unless the driver does not enable or support it.
 
 The :ref:`nrf_security_drivers_cc3xx` allows enabling or disabling of specific PSA APIs (such as psa_cipher_encrypt, psa_sign_hash), but not individual algorithms.
 
@@ -77,7 +142,7 @@ Key type support
 The following table shows key type support for each driver:
 
 +-----------------------+---------------------------+----------------------------+---------------------------+
-| Key type              | nrf_cc3xx driver support  | nrf_oberon driver support  | nrf_cracen driver support |
+| Key type              | nrf_cc3xx driver support  | nrf_oberon driver support  | CRACEN driver support     |
 +=======================+===========================+============================+===========================+
 | AES                   | Supported                 | Supported                  | Supported                 |
 +-----------------------+---------------------------+----------------------------+---------------------------+
@@ -139,7 +204,7 @@ Cipher support
 The following table shows cipher algorithm support for each driver:
 
 +-----------------------+---------------------------+----------------------------+---------------------------+
-| Cipher mode           | nrf_cc3xx driver support  | nrf_oberon driver support  | nrf_cracen driver support |
+| Cipher mode           | nrf_cc3xx driver support  | nrf_oberon driver support  | CRACEN driver support     |
 +=======================+===========================+============================+===========================+
 | ECB no padding        | Supported                 | Supported                  | Supported                 |
 +-----------------------+---------------------------+----------------------------+---------------------------+
@@ -165,7 +230,7 @@ The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_CIPHER_DRIVER` enables
 Key size configuration is supported as described in `AES key size configuration`_, for all algorithms except the stream cipher.
 
 .. note::
-   The :ref:`nrf_security_drivers_cc3xx` is limited to AES key sizes of 128 bits on devices with Arm CryptoCell cc310.
+   The :ref:`nrf_security_drivers_cc3xx` is limited to AES key sizes of 128 bits on devices with Arm CryptoCell nrf_cc310.
 
 Key agreement configurations
 ****************************
@@ -186,7 +251,7 @@ Key agreement support
 The following table shows Key agreement support for each driver:
 
 +-------------------------+---------------------------+----------------------------+---------------------------+
-| Key agreement algorithm | nrf_cc3xx driver support  | nrf_oberon driver support  | nrf_cracen driver support |
+| Key agreement algorithm | nrf_cc3xx driver support  | nrf_oberon driver support  | CRACEN driver support     |
 +=========================+===========================+============================+===========================+
 | ECDH                    | Supported                 | Supported                  | Supported                 |
 +-------------------------+---------------------------+----------------------------+---------------------------+
@@ -236,7 +301,7 @@ Key derivation function support
 The following table shows key derivation function (KDF) support for each driver:
 
 +------------------------------+--------------------------+----------------------------+---------------------------+
-| KDF algorithm                | nrf_cc3xx driver support | nrf_oberon driver support  | nrf_cracen driver support |
+| KDF algorithm                | nrf_cc3xx driver support | nrf_oberon driver support  | CRACEN driver support     |
 +==============================+==========================+============================+===========================+
 | HKDF                         | Not supported            | Supported                  | Supported                 |
 +------------------------------+--------------------------+----------------------------+---------------------------+
@@ -282,7 +347,7 @@ MAC support
 The following table shows MAC algorithm support for each driver:
 
 +----------------+--------------------------+----------------------------+---------------------------+
-| MAC cipher     | nrf_cc3xx driver support | nrf_oberon driver support  | nrf_cracen driver support |
+| MAC cipher     | nrf_cc3xx driver support | nrf_oberon driver support  | CRACEN driver support     |
 +================+==========================+============================+===========================+
 | CMAC           | Supported                | Supported                  | Supported                 |
 +----------------+--------------------------+----------------------------+---------------------------+
@@ -300,7 +365,7 @@ The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_MAC_DRIVER` enables th
 Key size configuration for CMAC is supported as described in `AES key size configuration`_.
 
 .. note::
-   * The :ref:`nrf_security_drivers_cc3xx` is limited to CMAC using AES key sizes of 128 bits on devices with Arm CryptoCell cc310.
+   * The :ref:`nrf_security_drivers_cc3xx` is limited to CMAC using AES key sizes of 128 bits on devices with Arm CryptoCell nrf_cc310.
    * The :ref:`nrf_security_drivers_cc3xx` is limited to HMAC using SHA-1, SHA-224, and SHA-256.
 
 AEAD configurations
@@ -324,7 +389,7 @@ AEAD support
 The following table shows AEAD algorithm support for each driver:
 
 +-----------------------+---------------------------+---------------------------+---------------------------+
-| AEAD cipher           | nrf_cc3xx driver support  | nrf_oberon driver support | nrf_cracen driver support |
+| AEAD cipher           | nrf_cc3xx driver support  | nrf_oberon driver support | CRACEN driver support     |
 +=======================+===========================+===========================+===========================+
 | CCM                   | Supported                 | Supported                 | Supported                 |
 +-----------------------+---------------------------+---------------------------+---------------------------+
@@ -342,8 +407,8 @@ The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_AEAD_DRIVER` enables t
 Key size configuration for CCM and GCM is supported as described in `AES key size configuration`_.
 
 .. note::
-   * The :ref:`nrf_security_drivers_cc3xx` is limited to AES key sizes of 128 bits on devices with Arm CryptoCell cc310.
-   * The :ref:`nrf_security_drivers_cc3xx` does not provide hardware support for GCM on devices with Arm CryptoCell cc310.
+   * The :ref:`nrf_security_drivers_cc3xx` is limited to AES key sizes of 128 bits on devices with Arm CryptoCell nrf_cc310.
+   * The :ref:`nrf_security_drivers_cc3xx` does not provide hardware support for GCM on devices with Arm CryptoCell nrf_cc310.
 
 
 Asymmetric signature configurations
@@ -381,7 +446,7 @@ Asymmetric signature support
 The following table shows asymmetric signature algorithm support for each driver:
 
 +---------------------------------+---------------------------+----------------------------+---------------------------+
-| Asymmetric signature algorithms | nrf_cc3xx driver support  | nrf_oberon driver support  | nrf_cracen driver support |
+| Asymmetric signature algorithms | nrf_cc3xx driver support  | nrf_oberon driver support  | CRACEN driver support     |
 +=================================+===========================+============================+===========================+
 | ECDSA                           | Supported                 | Supported                  | Supported                 |
 +---------------------------------+---------------------------+----------------------------+---------------------------+
@@ -439,7 +504,7 @@ Asymmetric encryption support
 The following table shows asymmetric encryption algorithm support for each driver:
 
 +---------------------------------+---------------------------+----------------------------+---------------------------+
-| Asymmetric encryption algorithm | nrf_cc3xx driver support  | nrf_oberon driver support  | nrf_cracen driver support |
+| Asymmetric encryption algorithm | nrf_cc3xx driver support  | nrf_oberon driver support  | CRACEN driver support     |
 +=================================+===========================+============================+===========================+
 | RSA OAEP                        | Supported                 | Supported                  | Supported                 |
 +---------------------------------+---------------------------+----------------------------+---------------------------+
@@ -450,7 +515,7 @@ The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CC3XX_ASYMMETRIC_ENCRYPTION_D
 
 Configuration of the :ref:`nrf_security_drivers_oberon` is automatically generated based on the user-enabled algorithms in `Asymmetric encryption configurations`_.
 
-The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_ASYMMETRIC_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
+The Kconfig option :kconfig:option:`CONFIG_PSA_USE_CRACEN_ASYMMETRIC_ENCRYPTION_DRIVER` enables the :ref:`nrf_security_drivers_cracen` for all supported algorithms.
 
 RSA key size configuration is supported as described in `RSA key size configuration`_.
 
@@ -539,7 +604,7 @@ ECC curve support
 The following table shows ECC curve support for each driver:
 
 +--------------------------+---------------------------+----------------------------+---------------------------+
-| ECC curve type           | nrf_cc3xx driver support  | nrf_oberon driver support  | nrf_cracen driver support |
+| ECC curve type           | nrf_cc3xx driver support  | nrf_oberon driver support  | CRACEN driver support     |
 +==========================+===========================+============================+===========================+
 | BrainpoolP160r1 (weak)   | Not supported             | Not supported              | Not supported             |
 +--------------------------+---------------------------+----------------------------+---------------------------+
@@ -699,7 +764,7 @@ Hash support
 The following table shows hash algorithm support for each driver:
 
 +-----------------------+----------------------------+---------------------------+---------------------------+
-| Hash algorithm        |  nrf_cc3xx driver support  | nrf_oberon driver support | nrf_cracen driver support |
+| Hash algorithm        |  nrf_cc3xx driver support  | nrf_oberon driver support | CRACEN driver support     |
 +=======================+============================+===========================+===========================+
 | SHA-1 (weak)          | Supported                  | Supported                 | Supported                 |
 +-----------------------+----------------------------+---------------------------+---------------------------+
@@ -772,7 +837,7 @@ Password-authenticated key exchange support
 The following table shows PAKE algorithm support for each driver:
 
 +-----------------------+--------------------------+---------------------------+---------------------------+
-| PAKE algorithm        | nrf_cc3xx driver support | nrf_oberon driver support | nrf_cracen driver support |
+| PAKE algorithm        | nrf_cc3xx driver support | nrf_oberon driver support | CRACEN driver support     |
 +=======================+==========================+===========================+===========================+
 | EC J-PAKE             | Not supported            | Supported                 | Supported                 |
 +-----------------------+--------------------------+---------------------------+---------------------------+
@@ -813,23 +878,23 @@ RSA key size configuration
 
 To enable RSA key size support, set one or more of the Kconfig options in the following table:
 
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
-| RSA key size       | Configuration option                                | nrf_cc3xx driver support | nrf_oberon driver support | nrf_cracen driver support |
-+====================+=====================================================+==========================+===========================+===========================+
-| 1024 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_1024` | Supported                | Supported                 | Not supported             |
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
-| 1536 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_1536` | Supported                | Supported                 | Not supported             |
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
-| 2048 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_2048` | Supported                | Supported                 | Supported                 |
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
-| 3072 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_3072` | Supported (CC312 only)   | Supported                 | Supported                 |
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
-| 4096 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_4096` | Not supported            | Supported                 | Supported                 |
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
-| 6144 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_6144` | Not supported            | Supported                 | Not supported             |
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
-| 8192 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_8192` | Not supported            | Supported                 | Not supported             |
-+--------------------+-----------------------------------------------------+--------------------------+---------------------------+---------------------------+
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
+| RSA key size       | Configuration option                                | nrf_cc3xx driver support  | nrf_oberon driver support | CRACEN driver support     |
++====================+=====================================================+===========================+===========================+===========================+
+| 1024 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_1024` | Supported                 | Supported                 | Not supported             |
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
+| 1536 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_1536` | Supported                 | Supported                 | Not supported             |
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
+| 2048 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_2048` | Supported                 | Supported                 | Supported                 |
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
+| 3072 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_3072` | Supported (nrf_cc312 only)| Supported                 | Supported                 |
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
+| 4096 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_4096` | Not supported             | Supported                 | Supported                 |
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
+| 6144 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_6144` | Not supported             | Supported                 | Not supported             |
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
+| 8192 bits          | :kconfig:option:`CONFIG_PSA_WANT_RSA_KEY_SIZE_8192` | Not supported             | Supported                 | Not supported             |
++--------------------+-----------------------------------------------------+---------------------------+---------------------------+---------------------------+
 
 .. note::
    All RSA key size configurations are introduced by :ref:`nrf_security` and are not described by the PSA Crypto specification.

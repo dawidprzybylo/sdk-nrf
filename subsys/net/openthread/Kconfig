@@ -8,7 +8,7 @@
 # Separate Kconfig exists in nrfxlib repository responsible solely for managing
 # OpenThread precompiled libraries.
 
-if NET_L2_OPENTHREAD
+if OPENTHREAD
 
 menu "OpenThread"
 
@@ -16,7 +16,6 @@ config NORDIC_SECURITY_PROMPTLESS
 	default y if !CUSTOM_OPENTHREAD_SECURITY
 
 choice OPENTHREAD_SECURITY
-	depends on !OPENTHREAD_SECURITY_INTERNAL
 
 config OPENTHREAD_NRF_SECURITY_PSA_CHOICE
 	bool "nRF Security with PSA crypto enabled"
@@ -118,7 +117,7 @@ config OPENTHREAD_MBEDTLS_DEBUG
 
 config OPENTHREAD_THREAD_STACK_SIZE
 	int "OpenThread thread stack size"
-	default 1224 if OPENTHREAD_COPROCESSOR_RCP
+	default 2048 if OPENTHREAD_COPROCESSOR_RCP
 	default 7168 if (OPENTHREAD_COMMISSIONER || OPENTHREAD_JOINER) && PSA_CRYPTO_DRIVER_CRACEN
 	default 6240 if (OPENTHREAD_COMMISSIONER || OPENTHREAD_JOINER)
 	default 6144 if PSA_CRYPTO_DRIVER_CRACEN
@@ -146,7 +145,7 @@ endchoice
 
 endmenu # "OpenThread"
 
-endif # NET_L2_OPENTHREAD
+endif # OPENTHREAD
 
 rsource "rpc/Kconfig"
 rsource "report/Kconfig"

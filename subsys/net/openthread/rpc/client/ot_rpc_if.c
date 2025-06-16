@@ -68,13 +68,21 @@ out:
 	return (int)len;
 }
 
-void add_ipv6_addr_to_zephyr(struct net_if *iface, const otNetifAddress *addr)
+static inline bool is_anycast_locator(const otNetifAddress *addr)
+{
+	return addr->mMeshLocal && addr->mAddress.mFields.m16[4] == htons(0x0000) &&
+	       addr->mAddress.mFields.m16[5] == htons(0x00ff) &&
+	       addr->mAddress.mFields.m16[6] == htons(0xfe00) &&
+	       addr->mAddress.mFields.m8[14] == 0xfc;
+}
+
+static void add_ipv6_addr_to_zephyr(struct net_if *iface, const otNetifAddress *addr)
 {
 	struct net_if_addr *if_addr;
 	enum net_addr_type addr_type;
 
 	for (; addr; addr = addr->mNext) {
-		if (addr->mRloc /*|| is_anycast_locator(address)*/) {
+		if (addr->mRloc || is_anycast_locator(addr)) {
 			continue;
 		}
 
@@ -103,10 +111,11 @@ void add_ipv6_addr_to_zephyr(struct net_if *iface, const otNetifAddress *addr)
 		}
 
 		if_addr->is_mesh_local = addr->mMeshLocal;
+		if_addr->addr_state = addr->mPreferred ? NET_ADDR_PREFERRED : NET_ADDR_DEPRECATED;
 	}
 }
 
-void rm_ipv6_addr_from_zephyr(struct net_if *iface, const otNetifAddress *ot_addr)
+static void rm_ipv6_addr_from_zephyr(struct net_if *iface, const otNetifAddress *ot_addr)
 {
 	struct net_if_ipv6 *ipv6;
 
@@ -172,7 +181,9 @@ static int ot_rpc_l2_enable(struct net_if *iface, bool state)
 		net_if_set_link_addr(iface, (uint8_t *)otLinkGetExtendedAddress(NULL)->m8,
 				     OT_EXT_ADDRESS_SIZE, NET_LINK_IEEE802154);
 		update_netif_addrs(iface);
-		otSetStateChangedCallback(NULL, ot_state_changed_handler, iface);
+		if (otSetStateChangedCallback(NULL, ot_state_changed_handler, iface)) {
+			NET_ERR("otSetStateChangedCallback failed");
+		}
 	}
 
 	return 0;

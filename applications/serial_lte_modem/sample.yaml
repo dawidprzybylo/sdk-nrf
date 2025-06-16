@@ -12,10 +12,16 @@ tests:
       - thingy91/nrf9160/ns
       - thingy91x/nrf9151/ns
     integration_platforms:
+      - nrf9160dk/nrf9160/ns
+      - nrf9161dk/nrf9161/ns
       - nrf9151dk/nrf9151/ns
+      - nrf9131ek/nrf9131/ns
+      - thingy91/nrf9160/ns
+      - thingy91x/nrf9151/ns
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.extmcu:
     sysbuild: true
     build_only: true
@@ -33,6 +39,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.ppp_without_cmux:
     sysbuild: true
     build_only: true
@@ -51,6 +58,29 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
+  applications.serial_lte_modem.ppp_without_cmux_power_indicate_pin:
+    sysbuild: true
+    build_only: true
+    extra_args:
+      - EXTRA_CONF_FILE="overlay-ppp.conf"
+      - EXTRA_DTC_OVERLAY_FILE="overlay-ppp-without-cmux.overlay"
+    extra_configs:
+      - CONFIG_SLM_POWER_PIN=31
+      - CONFIG_SLM_INDICATE_PIN=30
+    platform_allow:
+      - nrf9160dk/nrf9160/ns
+      - nrf9161dk/nrf9161/ns
+      - nrf9151dk/nrf9151/ns
+      - nrf9131ek/nrf9131/ns
+      - thingy91/nrf9160/ns
+      - thingy91x/nrf9151/ns
+    integration_platforms:
+      - nrf9151dk/nrf9151/ns
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.ppp_cmux_linux:
     sysbuild: true
     build_only: true
@@ -68,6 +98,28 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
+  applications.serial_lte_modem.ppp_cmux_linux_power_indicate_pin:
+    sysbuild: true
+    build_only: true
+    extra_args:
+      - EXTRA_CONF_FILE="overlay-ppp-cmux-linux.conf"
+    extra_configs:
+      - CONFIG_SLM_POWER_PIN=31
+      - CONFIG_SLM_INDICATE_PIN=30
+    platform_allow:
+      - nrf9160dk/nrf9160/ns
+      - nrf9161dk/nrf9161/ns
+      - nrf9151dk/nrf9151/ns
+      - nrf9131ek/nrf9131/ns
+      - thingy91/nrf9160/ns
+      - thingy91x/nrf9151/ns
+    integration_platforms:
+      - nrf9151dk/nrf9151/ns
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.ppp_cmux_zephyr_with_extmcu:
     sysbuild: true
     build_only: true
@@ -86,6 +138,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.ppp_cmux_zephyr_with_nrf52840_on_nrf9160dk:
     sysbuild: true
     build_only: true
@@ -99,6 +152,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.memfault:
     sysbuild: true
     build_only: true
@@ -118,6 +172,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.native_tls:
     sysbuild: true
     build_only: true
@@ -133,6 +188,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.lwm2m_carrier:
     sysbuild: true
     build_only: true
@@ -148,6 +204,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.lwm2m_carrier.softbank:
     sysbuild: true
     build_only: true
@@ -162,6 +219,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.lwm2m_carrier.lgu:
     sysbuild: true
     build_only: true
@@ -173,6 +231,7 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
   applications.serial_lte_modem.lwm2m_carrier.thingy91:
     sysbuild: true
     build_only: true
@@ -186,3 +245,25 @@ tests:
     tags:
       - ci_build
       - sysbuild
+      - ci_applications_serial_lte_modem
+  applications.serial_lte_modem.tracing:
+    sysbuild: true
+    build_only: true
+    platform_allow:
+      - nrf9151dk/nrf9151/ns
+      - nrf9160dk/nrf9160/ns
+      - nrf9161dk/nrf9161/ns
+      - thingy91/nrf9160/ns
+      - thingy91x/nrf9151/ns
+    integration_platforms:
+      - nrf9151dk/nrf9151/ns
+      - nrf9160dk/nrf9160/ns
+      - nrf9161dk/nrf9161/ns
+      - thingy91/nrf9160/ns
+      - thingy91x/nrf9151/ns
+    tags:
+      - ci_build
+      - sysbuild
+      - ci_applications_serial_lte_modem
+    extra_args:
+      - serial_lte_modem_SNIPPET=nrf91-modem-trace-uart

@@ -68,8 +68,8 @@ function(include_packaging)
   include(${ZEPHYR_NRF_MODULE_DIR}/subsys/bootloader/cmake/packaging.cmake)
 endfunction()
 
-function(include_sdp)
-  include(${ZEPHYR_NRF_MODULE_DIR}/cmake/sysbuild/sdp.cmake)
+function(include_hpf)
+  include(${ZEPHYR_NRF_MODULE_DIR}/cmake/sysbuild/hpf.cmake)
 endfunction()
 
 function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
@@ -229,12 +229,19 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
         set_config_bool(${DEFAULT_IMAGE} CONFIG_MCUBOOT_BOOTLOADER_USES_SHA512 y)
 
         # We are sure that ED25519 signature on MCUboot does not need these
-        set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_CIPHER_DRIVER n)
         set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_AEAD_DRIVER n)
-        set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_MAC_DRIVER n)
-        set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_KEY_AGREEMENT_DRIVER n)
         set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_PAKE_DRIVER n)
-        set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_KEY_DERIVATION_DRIVER n)
+        if(SB_CONFIG_BOOT_ENCRYPTION)
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_CIPHER_DRIVER y)
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_MAC_DRIVER y)
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_KEY_AGREEMENT_DRIVER y)
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_KEY_DERIVATION_DRIVER y)
+        else()
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_CIPHER_DRIVER n)
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_MAC_DRIVER n)
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_KEY_AGREEMENT_DRIVER n)
+          set_config_bool(mcuboot CONFIG_PSA_USE_CRACEN_KEY_DERIVATION_DRIVER n)
+        endif()
 
         if(SB_CONFIG_MCUBOOT_SIGNATURE_USING_KMU)
           set_config_bool(mcuboot CONFIG_BOOT_SIGNATURE_USING_KMU y)
@@ -280,8 +287,8 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
       set_config_bool(mcuboot CONFIG_BOOT_FIH_PROFILE_DEFAULT_LOW y)
     endif()
 
-    if(SB_CONFIG_PARTITION_MANAGER)
-      # Use NCS signing script with support for PM
+    if(SB_CONFIG_PARTITION_MANAGER OR SB_CONFIG_MCUBOOT_MODE_DIRECT_XIP OR SB_CONFIG_MCUBOOT_MODE_DIRECT_XIP_WITH_REVERT)
+      # Use NCS signing script with support for PM or direct XIP (NCS specific features)
       if(SB_CONFIG_QSPI_XIP_SPLIT_IMAGE)
         set(${DEFAULT_IMAGE}_SIGNING_SCRIPT "${ZEPHYR_NRF_MODULE_DIR}/cmake/sysbuild/image_signing_split.cmake" CACHE INTERNAL "MCUboot signing script" FORCE)
 
@@ -425,12 +432,6 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
       endif()
     endif()
 
-    if(SB_CONFIG_MCUBOOT_FPROTECT_ALLOW_COMBINED_REGIONS)
-      set_config_bool(mcuboot CONFIG_FPROTECT_ALLOW_COMBINED_REGIONS y)
-    else()
-      set_config_bool(mcuboot CONFIG_FPROTECT_ALLOW_COMBINED_REGIONS n)
-    endif()
-
     # Apply image compression support options
     if(SB_CONFIG_MCUBOOT_COMPRESSED_IMAGE_SUPPORT)
       set_config_bool(mcuboot CONFIG_NRF_COMPRESS y)
@@ -466,13 +467,17 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
         if(SB_CONFIG_SOC_SERIES_NRF54LX)
           set_config_bool(mcuboot CONFIG_BOOT_ECDSA_TINYCRYPT y)
         else()
-          add_overlay_config(
-            mcuboot
-            ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/external_crypto.conf
-            )
+          if(SB_CONFIG_BOOT_SHARED_CRYPTO_ECDSA_P256)
+            add_overlay_config(
+              mcuboot
+              ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/external_crypto.conf
+              )
+            endif()
         endif()
-      else()
-        message(WARNING "MCUboot and secure boot (application core) are enabled but MCUboot signing key type is not set to ECDSA-P256, this is a non-optimal configuration")
+      endif()
+
+      if((NOT SB_CONFIG_SECURE_BOOT_SIGNATURE_TYPE_ECDSA AND SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256) OR (SB_CONFIG_SECURE_BOOT_SIGNATURE_TYPE_ECDSA AND NOT SB_CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256))
+        message(WARNING "MCUboot and secure boot (application core) are enabled but MCUboot signing key type is not set to ECDSA-P256, this is a non-optimal configuration if sharing of crypto functions is needed from b0 to MCUboot")
       endif()
     else()
       set_config_bool(${DEFAULT_IMAGE} CONFIG_SECURE_BOOT y)
@@ -509,7 +514,9 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
   endif()
 
   if(SB_CONFIG_SECURE_BOOT_BOOTCONF_LOCK_WRITES)
-    set_config_bool(b0 CONFIG_FPROTECT_ALLOW_COMBINED_REGIONS n)
+    foreach(image ${PRE_CMAKE_IMAGES})
+      set_config_bool(${image} CONFIG_FPROTECT_ALLOW_COMBINED_REGIONS n)
+    endforeach()
   endif()
 
   if(SB_CONFIG_SECURE_BOOT_NETCORE)
@@ -612,8 +619,8 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_cmake)
     endif()
   endif()
 
-  if(SB_CONFIG_SDP)
-    include_sdp()
+  if(SB_CONFIG_HPF)
+    include_hpf()
   endif()
 
   if(SB_CONFIG_APPROTECT_USE_UICR OR SB_CONFIG_APPROTECT_LOCK OR SB_CONFIG_APPROTECT_USER_HANDLING OR SB_CONFIG_APPROTECT_DISABLE OR
@@ -855,6 +862,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/netcore.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/secureboot.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/mcuboot.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/suit.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/sdp.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/hpf.cmake)
 
 store_ncs_vars()

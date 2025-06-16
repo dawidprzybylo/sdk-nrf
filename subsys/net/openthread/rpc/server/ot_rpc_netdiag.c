@@ -8,6 +8,7 @@
 #include <ot_rpc_ids.h>
 #include <ot_rpc_types.h>
 #include <ot_rpc_common.h>
+#include <ot_rpc_lock.h>
 #include "ot_rpc_resource.h"
 
 #include <nrf_rpc_cbor.h>
@@ -72,6 +73,7 @@ static size_t ot_rpc_network_diag_tlv_size(otNetworkDiagTlv *aNetworkDiagTlv)
 static void ot_rpc_encode_network_diag_tlv(struct nrf_rpc_cbor_ctx *ctx,
 					   otNetworkDiagTlv *aNetworkDiagTlv)
 {
+	uint8_t mode;
 	nrf_rpc_encode_uint(ctx, aNetworkDiagTlv->mType);
 
 	switch (aNetworkDiagTlv->mType) {
@@ -83,7 +85,7 @@ static void ot_rpc_encode_network_diag_tlv(struct nrf_rpc_cbor_ctx *ctx,
 		nrf_rpc_encode_buffer(ctx, aNetworkDiagTlv->mData.mEui64.m8, OT_EXT_ADDRESS_SIZE);
 		break;
 	case OT_NETWORK_DIAGNOSTIC_TLV_MODE:
-		uint8_t mode = 0;
+		mode = 0;
 
 		WRITE_BIT(mode, 0, aNetworkDiagTlv->mData.mMode.mRxOnWhenIdle);
 		WRITE_BIT(mode, 1, aNetworkDiagTlv->mData.mMode.mDeviceType);
@@ -210,7 +212,7 @@ static void ot_rpc_encode_network_diag_tlv(struct nrf_rpc_cbor_ctx *ctx,
 		nrf_rpc_encode_uint(ctx, aNetworkDiagTlv->mData.mChildTable.mCount);
 		zcbor_list_start_encode(ctx->zs, aNetworkDiagTlv->mData.mChildTable.mCount);
 		for (int i = 0; i < aNetworkDiagTlv->mData.mChildTable.mCount; i++) {
-			uint8_t mode = 0;
+			mode = 0;
 
 			nrf_rpc_encode_uint(ctx,
 				aNetworkDiagTlv->mData.mChildTable.mTable[i].mTimeout);
@@ -258,9 +260,9 @@ static void ot_rpc_cmd_get_next_diagnostic_tlv(const struct nrf_rpc_group *group
 		return;
 	}
 
-	openthread_api_mutex_lock(openthread_get_default_context());
+	ot_rpc_mutex_lock();
 	error = otThreadGetNextDiagnosticTlv(message, &iterator, &tlv);
-	openthread_api_mutex_unlock(openthread_get_default_context());
+	ot_rpc_mutex_unlock();
 
 	if (error != OT_ERROR_NONE) {
 		nrf_rpc_rsp_send_uint(group, error);
@@ -299,8 +301,10 @@ void handle_receive_diagnostic_get(otError aError, otMessage *aMessage,
 	nrf_rpc_encode_uint(&ctx, message_rep);
 	ot_rpc_encode_message_info(&ctx, aMessageInfo);
 
+	ot_rpc_mutex_unlock();
 	nrf_rpc_cbor_cmd_no_err(&ot_group, OT_RPC_CMD_THREAD_SEND_DIAGNOSTIC_GET_CB, &ctx,
 				nrf_rpc_rsp_decode_void, NULL);
+	ot_rpc_mutex_lock();
 
 	ot_res_tab_msg_free(message_rep);
 }
@@ -318,11 +322,11 @@ static void ot_rpc_cmd_send_diagnostic_get(const struct nrf_rpc_group *group,
 	tlvTypes = nrf_rpc_decode_buffer_ptr_and_size(ctx, &count);
 
 	if (tlvTypes) {
-		openthread_api_mutex_lock(openthread_get_default_context());
+		ot_rpc_mutex_lock();
 		error = otThreadSendDiagnosticGet(openthread_get_default_instance(), &addr,
 						  tlvTypes, count, handle_receive_diagnostic_get,
 						  NULL);
-		openthread_api_mutex_unlock(openthread_get_default_context());
+		ot_rpc_mutex_unlock();
 	}
 
 	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
@@ -346,10 +350,10 @@ static void ot_rpc_cmd_send_diagnostic_reset(const struct nrf_rpc_group *group,
 	tlvTypes = nrf_rpc_decode_buffer_ptr_and_size(ctx, &count);
 
 	if (tlvTypes) {
-		openthread_api_mutex_lock(openthread_get_default_context());
+		ot_rpc_mutex_lock();
 		error = otThreadSendDiagnosticReset(openthread_get_default_instance(), &addr,
 						    tlvTypes, count);
-		openthread_api_mutex_unlock(openthread_get_default_context());
+		ot_rpc_mutex_unlock();
 	}
 
 	if (!nrf_rpc_decoding_done_and_check(group, ctx)) {
@@ -373,9 +377,9 @@ static void ot_rpc_cmd_set_vendor_name(const struct nrf_rpc_group *group,
 		return;
 	}
 
-	openthread_api_mutex_lock(openthread_get_default_context());
+	ot_rpc_mutex_lock();
 	error = otThreadSetVendorName(openthread_get_default_instance(), buffer);
-	openthread_api_mutex_unlock(openthread_get_default_context());
+	ot_rpc_mutex_unlock();
 
 	nrf_rpc_rsp_send_uint(group, error);
 }
@@ -393,9 +397,9 @@ static void ot_rpc_cmd_set_vendor_model(const struct nrf_rpc_group *group,
 		return;
 	}
 
-	openthread_api_mutex_lock(openthread_get_default_context());
+	ot_rpc_mutex_lock();
 	error = otThreadSetVendorModel(openthread_get_default_instance(), buffer);
-	openthread_api_mutex_unlock(openthread_get_default_context());
+	ot_rpc_mutex_unlock();
 
 	nrf_rpc_rsp_send_uint(group, error);
 }
@@ -413,9 +417,9 @@ static void ot_rpc_cmd_set_vendor_sw_version(const struct nrf_rpc_group *group,
 		return;
 	}
 
-	openthread_api_mutex_lock(openthread_get_default_context());
+	ot_rpc_mutex_lock();
 	error = otThreadSetVendorSwVersion(openthread_get_default_instance(), buffer);
-	openthread_api_mutex_unlock(openthread_get_default_context());
+	ot_rpc_mutex_unlock();
 
 	nrf_rpc_rsp_send_uint(group, error);
 }
@@ -428,12 +432,12 @@ static void ot_rpc_cmd_get_vendor_name(const struct nrf_rpc_group *group,
 
 	nrf_rpc_cbor_decoding_done(group, ctx);
 
-	openthread_api_mutex_lock(openthread_get_default_context());
+	ot_rpc_mutex_lock();
 	data = otThreadGetVendorName(openthread_get_default_instance());
 
 	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, 2 + strlen(data));
 	nrf_rpc_encode_str(&rsp_ctx, data, strlen(data));
-	openthread_api_mutex_unlock(openthread_get_default_context());
+	ot_rpc_mutex_unlock();
 
 	nrf_rpc_cbor_rsp_no_err(group, &rsp_ctx);
 }
@@ -446,12 +450,12 @@ static void ot_rpc_cmd_get_vendor_model(const struct nrf_rpc_group *group,
 
 	nrf_rpc_cbor_decoding_done(group, ctx);
 
-	openthread_api_mutex_lock(openthread_get_default_context());
+	ot_rpc_mutex_lock();
 	data = otThreadGetVendorModel(openthread_get_default_instance());
 
 	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, 2 + strlen(data));
 	nrf_rpc_encode_str(&rsp_ctx, data, strlen(data));
-	openthread_api_mutex_unlock(openthread_get_default_context());
+	ot_rpc_mutex_unlock();
 
 	nrf_rpc_cbor_rsp_no_err(group, &rsp_ctx);
 }
@@ -464,12 +468,12 @@ static void ot_rpc_cmd_get_vendor_sw_version(const struct nrf_rpc_group *group,
 
 	nrf_rpc_cbor_decoding_done(group, ctx);
 
-	openthread_api_mutex_lock(openthread_get_default_context());
+	ot_rpc_mutex_lock();
 	data = otThreadGetVendorSwVersion(openthread_get_default_instance());
 
 	NRF_RPC_CBOR_ALLOC(group, rsp_ctx, 2 + strlen(data));
 	nrf_rpc_encode_str(&rsp_ctx, data, strlen(data));
-	openthread_api_mutex_unlock(openthread_get_default_context());
+	ot_rpc_mutex_unlock();
 
 	nrf_rpc_cbor_rsp_no_err(group, &rsp_ctx);
 }

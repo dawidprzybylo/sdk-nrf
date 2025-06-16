@@ -331,6 +331,16 @@ You can use the following optional arguments:
 * ``-m`` or ``--matter-path`` to provide a path to a different Matter SDK location than the default one.
   The command will use this path to read the required ZAP tool version and use the generation script from it.
 
+.. _ug_matter_gs_tools_nrfconnect_manufacturer_cluster_editor:
+
+nRF Connect Matter Manufacturer Cluster Editor
+==============================================
+
+The nRF Connect Matter Manufacturer Cluster Editor is a GUI tool for creating new manufacturer-specific clusters or creating an extensions to the existing clusters.
+To use the tool, see the dedicated :ref:`ug_nrfconnect_manufacturer_cluster_editor_tool` user guide.
+
+.. include:: /includes/matter_manufacturer_cluster_editor_note.txt
+
 .. _ug_matter_gs_tools_cert:
 
 CHIP Certificate Tool
@@ -418,3 +428,9 @@ Online Power Profiler for Matter over Thread
 It provides a graphical interface for configuring the parameters of your device, such as TX power, voltage supply, or ICD configuration and simulating its power consumption based on the simplified, theoretical model.
 The tool supports the nRF52840, nRF5340 and nRF54L15 platforms.
 It allows you to also estimate the power consumption of your device in a selected period of time and use the output for estimating the lifetime of the battery used as a power source.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Subpages:
+
+   manufacturer_cluster_editor_tool

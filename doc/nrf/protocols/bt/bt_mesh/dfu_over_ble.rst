@@ -16,18 +16,24 @@ This happens if the device is not advertising the SMP service UUID and the filte
 The device can still be discovered through a service discovery, for example using the `nRF Connect for Mobile`_ app.
 See `Discovering Bluetooth Mesh devices in nRF Connect Device Manager`_ for more details.
 
+Before performing a FOTA update, make sure that you have disabled the option to erase application settings.
+Otherwise, the device will be unprovisioned after the update.
+
+* In the `nRF Connect for Mobile`_ mobile app, open the :guilabel:`Settings` tab, select :guilabel:`Mcu Manager options`, and disable the **Erase application settings** option.
+* In the `nRF Connect Device Manager`_ mobile app, open the :guilabel:`Image` tab, tap the arrow icon next to **Firmware Upgrade**, and disable the **Erase application settings** option.
+
 Point-to point DFU over Bluetooth Low Energy in Bluetooth Mesh samples
 **********************************************************************
 
 The :ref:`bluetooth_mesh_light`, :ref:`ble_mesh_dfu_target` and :ref:`ble_mesh_dfu_distributor` samples enable support for point-to-point DFU over Bluetooth Low Energy for nRF52 Series development kits.
 See the sample documentation for each of the above mentioned samples for more details.
 
-Point-to-point DFU over Bluetooth Low Energy is supported by default, out-of-the-box, for all samples and applications compatible with :ref:`zephyr:thingy53_nrf5340`.
-See :ref:`thingy53_app_update` for more information about updating firmware image on :ref:`zephyr:thingy53_nrf5340`.
-For full list of samples and applications supported on :ref:`zephyr:thingy53_nrf5340`, see :ref:`thingy53_compatible_applications`.
+Point-to-point DFU over Bluetooth Low Energy is supported by default, out-of-the-box, for all samples and applications compatible with :zephyr:board:`thingy53`.
+See :ref:`thingy53_app_update` for more information about updating firmware image on :zephyr:board:`thingy53`.
+For full list of samples and applications supported on :zephyr:board:`thingy53`, see :ref:`thingy53_compatible_applications`.
 
 .. note::
-   If you are using the `nRF Connect Device Manager`_ mobile app to perform FOTA updates on :ref:`zephyr:thingy53_nrf5340`, your Bluetooth Mesh device might not be visible in the list of available devices.
+   If you are using the `nRF Connect Device Manager`_ mobile app to perform FOTA updates on :zephyr:board:`thingy53`, your Bluetooth Mesh device might not be visible in the list of available devices.
 
 Discovering Bluetooth Mesh devices in nRF Connect Device Manager
 ****************************************************************

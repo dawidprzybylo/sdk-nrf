@@ -183,6 +183,8 @@ static void forward_hid_report(struct hids_peripheral *per, uint8_t report_id,
 
 		if (err == -EACCES) {
 			/* Subscriber has not subscribed for the report. Drop the report data. */
+		} else if (err == -ENOTSUP) {
+			/* Unsupported HID report ID. Drop the report data. */
 		} else if (err) {
 			LOG_ERR("hid_reportq_report_add failed (err: %d)", err);
 		}
@@ -253,7 +255,9 @@ static void set_peripheral_protocol_mode(struct hids_peripheral *per, enum bt_hi
 {
 	int err = bt_hogp_pm_write(&per->hogp, pm);
 
-	if (err) {
+	if (err == -EOPNOTSUPP) {
+		LOG_WRN("Protocol Mode update not supported by peripheral: %p", (void *)per);
+	} else if (err) {
 		LOG_ERR("Cannot update Protocol Mode (err: %d)", err);
 	}
 }
@@ -1096,11 +1100,18 @@ static bool handle_hid_report_subscription_event(const struct hid_report_subscri
 
 	__ASSERT_NO_MSG(sub);
 	enum bt_hids_pm prev_pm = get_sub_protocol_mode(sub);
+	int err;
 
 	if (event->enabled) {
-		hid_reportq_subscribe(sub->in_reportq, event->report_id);
+		err = hid_reportq_subscribe(sub->in_reportq, event->report_id);
 	} else {
-		hid_reportq_unsubscribe(sub->in_reportq, event->report_id);
+		err = hid_reportq_unsubscribe(sub->in_reportq, event->report_id);
+	}
+
+	if (err) {
+		LOG_ERR("HID report ID %" PRIx8 " %ssubscribe failed (err: %d)",
+			event->report_id, event->enabled ? "" : "un", err);
+		return false;
 	}
 
 	if (prev_pm != get_sub_protocol_mode(sub)) {

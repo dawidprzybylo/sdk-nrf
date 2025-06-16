@@ -1,44 +1,66 @@
 .. _nrf_security_backend_config:
 .. _nrf_security_legacy_config:
+.. _legacy_crypto_support:
+.. _nrf_security_drivers_legacy:
 
-Legacy configurations and supported features
-############################################
+Configuring nRF Security with legacy crypto APIs
+################################################
 
 .. contents::
    :local:
    :depth: 2
 
-This section covers the configurations available when using :ref:`legacy_crypto_support`.
+.. legacy_crypto_support_def_start
+
+The legacy crypto is a subsystem for software that requires Mbed TLS crypto toolbox API functions that are prefixed with ``mbedtls_``.
+It provides TLS and DTLS support and backwards compatibility with older applications that do not use :ref:`PSA Crypto APIs <psa_crypto_support>`.
+The legacy crypto uses *alternative implementations* (called backends) of the drivers that are also used for the PSA Crypto API support.
+
+To enable the legacy crypto support mode of nRF Security:
+
+1. Set the :kconfig:option:`CONFIG_NRF_SECURITY` Kconfig option.
+2. :ref:`Configure the legacy crypto backend <nrf_security_legacy_backend_config>`.
+
+.. legacy_crypto_support_def_end
+
+Deprecation of legacy crypto support
+************************************
 
 .. caution::
-   Legacy crypto toolbox APIs are marked as deprecated in the |NCS| version 2.8.0, and will be removed in a future version.
-   It is not recommended to use the legacy crypto toolbox APIs and the related configurations in any new designs.
+   |legacy_crypto_deprecation_note|
 
-.. note::
-   Legacy crypto toolbox APIs are not supported on nRF54L Series devices.
+The following changes have been made to the legacy crypto support with the deprecation announcement:
 
+* Enabling the Kconfig option :kconfig:option:`CONFIG_NRF_SECURITY` replaces using the Kconfig option :kconfig:option:`CONFIG_NORDIC_SECURITY_BACKEND` to enable the legacy crypto support.
+  Setting :kconfig:option:`CONFIG_NORDIC_SECURITY_BACKEND` also enables :kconfig:option:`CONFIG_MBEDTLS_LEGACY_CRYPTO_C`, which shows a deprecation warning in the build output.
+* The legacy Mbed TLS APIs no longer support the glued functionality.
+* Legacy configurations no longer have an effect on the configurations for the secure image of a TF-M build.
+
+.. _nrf_security_legacy_backend_config:
 .. _nrf_security_backend_config_multiple:
-
-Configuring backends
-********************
-
-The legacy configuration does not allow multiple backends being enabled at the same time.
-
-The choice of implementation is controlled by setting :kconfig:option:`CONFIG_CC3XX_BACKEND` for devices with the CryptoCell hardware peripheral, or :kconfig:option:`CONFIG_OBERON_BACKEND`.
-
 .. _nrf_security_backends_cc3xx:
-
-cc3xx backend
-=============
-
-Setting the Kconfig option :kconfig:option:`CONFIG_CC3XX_BACKEND` enables legacy crypto support for hardware accelerated cryptography using :ref:`nrf_cc3xx_mbedcrypto_readme`.
-
 .. _nrf_security_backends_oberon:
 
-Oberon backend
-==============
+Configuring the legacy crypto backend
+*************************************
 
-Setting the Kconfig option :kconfig:option:`CONFIG_CC3XX_OBERON` enables legacy crypto support using :ref:`nrf_oberon_readme`.
+The legacy crypto backend is a term describing a set of configurations that provide low-level integration with Mbed TLS that were used before the adoption of PSA Crypto APIs in the |NCS|.
+These legacy crypto backends are provided as *alternative implementations* of the drivers that are also used for the PSA Crypto API support.
+
+The legacy crypto configuration only allows one backend to be enabled at the same time.
+
+The following table lists the available legacy crypto backends with their respective Kconfig options and the corresponding hardware platforms.
+
++-----------------------------------------------+-----------------------------------------+----------------------------------------------------------+
+|                Driver library                 |          Legacy crypto backend          |               Supported hardware platforms               |
++===============================================+=========================================+==========================================================+
+| :ref:`nrf_cc3xx_mbedcrypto_readme`            | :kconfig:option:`CONFIG_CC3XX_BACKEND`  | nRF52840, nRF5340, nRF91 Series devices                  |
++-----------------------------------------------+-----------------------------------------+----------------------------------------------------------+
+| :ref:`nrf_oberon <nrfxlib:nrf_oberon_readme>` | :kconfig:option:`CONFIG_OBERON_BACKEND` | nRF devices with Arm Cortex®-M0, -M4, or -M33 processors |
++-----------------------------------------------+-----------------------------------------+----------------------------------------------------------+
+
+.. note::
+   Enabling the CryptoCell by using :kconfig:option:`CONFIG_CC3XX_BACKEND` in a non-secure image of a TF-M build will have no effect.
 
 AES configuration
 *****************
@@ -60,9 +82,9 @@ Feature support
 +-------------+-------------------+-------------+
 | Cipher mode | Backend           | Key size    |
 +=============+===================+=============+
-| ECB         | cc310             | 128-bit key |
+| ECB         | nrf_cc310         | 128-bit key |
 |             +-------------------+-------------+
-|             | cc312             | 128-bit key |
+|             | nrf_cc312         | 128-bit key |
 |             |                   +-------------+
 |             |                   | 192-bit key |
 |             |                   +-------------+
@@ -77,6 +99,9 @@ Feature support
 
 .. note::
    The :ref:`nrf_security_backends_oberon` uses some functionality from the original Mbed TLS for AES operations.
+
+.. note::
+   |original_mbedtls_def_note|
 
 AES cipher configuration
 ************************
@@ -102,9 +127,9 @@ Feature support
 +-------------+-------------------+-------------+-----------------------+
 | Cipher mode | Backend           | Key size    | Note                  |
 +=============+===================+=============+=======================+
-| CTR         | cc310             | 128-bit key |                       |
+| CTR         | nrf_cc310         | 128-bit key |                       |
 |             +-------------------+-------------+-----------------------+
-|             | cc312             | 128-bit key |                       |
+|             | nrf_cc312         | 128-bit key |                       |
 |             |                   +-------------+-----------------------+
 |             |                   | 192-bit key |                       |
 |             |                   +-------------+-----------------------+
@@ -116,9 +141,9 @@ Feature support
 |             |                   +-------------+-----------------------+
 |             |                   | 256-bit key |                       |
 +-------------+-------------------+-------------+-----------------------+
-| CBC         | cc310             | 128-bit key |                       |
+| CBC         | nrf_cc310         | 128-bit key |                       |
 |             +-------------------+-------------+-----------------------+
-|             | cc312             | 128-bit key |                       |
+|             | nrf_cc312         | 128-bit key |                       |
 |             |                   +-------------+-----------------------+
 |             |                   | 192-bit key |                       |
 |             |                   +-------------+-----------------------+
@@ -130,9 +155,9 @@ Feature support
 |             |                   +-------------+-----------------------+
 |             |                   | 256-bit key |                       |
 +-------------+-------------------+-------------+-----------------------+
-| XTS         | cc310             | N/A         | Backend not supported |
+| XTS         | nrf_cc310         | N/A         | Backend not supported |
 |             +-------------------+-------------+-----------------------+
-|             | cc312             | N/A         | Backend not supported |
+|             | nrf_cc312         | N/A         | Backend not supported |
 |             +-------------------+-------------+-----------------------+
 |             | nrf_oberon        | 128-bit key |                       |
 |             |                   +-------------+-----------------------+
@@ -152,9 +177,9 @@ Feature support
 +-----------+-------------------+-------------+
 | Algorithm | Backend           | Key size    |
 +===========+===================+=============+
-| CMAC      | cc310             | 128-bit key |
+| CMAC      | nrf_cc310         | 128-bit key |
 |           +-------------------+-------------+
-|           | cc312             | 128-bit key |
+|           | nrf_cc312         | 128-bit key |
 |           |                   +-------------+
 |           |                   | 192-bit key |
 |           |                   +-------------+
@@ -178,7 +203,7 @@ To configure Authenticated Encryption with Associated Data (AEAD), set the follo
 +==============+================================================+=========================================+
 | AES CCM/CCM* | :kconfig:option:`CONFIG_MBEDTLS_CCM_C`         |                                         |
 +--------------+------------------------------------------------+-----------------------------------------+
-| AES GCM      | :kconfig:option:`CONFIG_MBEDTLS_GCM_C`         | nrf_oberon or cc312                     |
+| AES GCM      | :kconfig:option:`CONFIG_MBEDTLS_GCM_C`         | nrf_oberon or nrf_cc312                 |
 +--------------+------------------------------------------------+-----------------------------------------+
 | ChaCha20     | :kconfig:option:`CONFIG_MBEDTLS_CHACHA20_C`    |                                         |
 +--------------+------------------------------------------------+-----------------------------------------+
@@ -189,8 +214,8 @@ To configure Authenticated Encryption with Associated Data (AEAD), set the follo
 
 .. note::
    * AEAD AES cipher modes are dependent on enabling AES core support according to `AES configuration`_.
-   * When Arm CryptoCell cc310 backend is used, AES GCM is provided by the original Mbed TLS implementation.
-   * The ChaCha-Poly implemented by the Arm CryptoCell cc3xx backend does not support incremental operations.
+   * When the ``nrf_cc310`` backend is used, AES GCM is provided by the original Mbed TLS implementation.
+   * The ChaCha-Poly implemented by the ``nrf_cc3xx`` backend does not support incremental operations.
    * The ChaCha-Poly implemented by the :ref:`nrf_security_backends_cc3xx` does not support incremental operations.
 
 Feature support
@@ -199,9 +224,9 @@ Feature support
 +--------------+-------------------+-------------+----------------------------------------------------------------------+
 | AEAD cipher  | Backend           | Key size    | Note                                                                 |
 +==============+===================+=============+======================================================================+
-| AES CCM/CCM* | cc310             | 128-bit key |                                                                      |
+| AES CCM/CCM* | nrf_cc310         | 128-bit key |                                                                      |
 |              +-------------------+-------------+----------------------------------------------------------------------+
-|              | cc312             | 128-bit key |                                                                      |
+|              | nrf_cc312         | 128-bit key |                                                                      |
 |              |                   +-------------+----------------------------------------------------------------------+
 |              |                   | 192-bit key |                                                                      |
 |              |                   +-------------+----------------------------------------------------------------------+
@@ -213,7 +238,7 @@ Feature support
 |              |                   +-------------+----------------------------------------------------------------------+
 |              |                   | 256-bit key |                                                                      |
 +--------------+-------------------+-------------+----------------------------------------------------------------------+
-| AES GCM      | cc312             | 128-bit key |                                                                      |
+| AES GCM      | nrf_cc312         | 128-bit key |                                                                      |
 |              |                   +-------------+----------------------------------------------------------------------+
 |              |                   | 192-bit key |                                                                      |
 |              |                   +-------------+----------------------------------------------------------------------+
@@ -225,15 +250,15 @@ Feature support
 |              |                   +-------------+----------------------------------------------------------------------+
 |              |                   | 256-bit key |                                                                      |
 +--------------+-------------------+-------------+----------------------------------------------------------------------+
-| ChaCha20     | cc3xx             | 256-bit key |                                                                      |
+| ChaCha20     | nrf_cc3xx         | 256-bit key |                                                                      |
 |              +-------------------+-------------+----------------------------------------------------------------------+
 |              | nrf_oberon        | 256-bit key |                                                                      |
 +--------------+-------------------+-------------+----------------------------------------------------------------------+
-| Poly1305     | cc3xx             | 256-bit key |                                                                      |
+| Poly1305     | nrf_cc3xx         | 256-bit key |                                                                      |
 |              +-------------------+-------------+----------------------------------------------------------------------+
 |              | nrf_oberon        | 256-bit key |                                                                      |
 +--------------+-------------------+-------------+----------------------------------------------------------------------+
-| ChaCha-Poly  | cc3xx             | 256-bit key | The ChaCha-Poly implementation in :ref:`nrf_security_backends_cc3xx` |
+| ChaCha-Poly  | nrf_cc3xx         | 256-bit key | The ChaCha-Poly implementation in :ref:`nrf_security_backends_cc3xx` |
 |              |                   |             | does not support incremental operations.                             |
 |              +-------------------+-------------+----------------------------------------------------------------------+
 |              | nrf_oberon        | 256-bit key |                                                                      |
@@ -250,7 +275,7 @@ Feature support
 +-----------+-------------------+----------------------+-----------------------+
 | Algorithm | Backend           | Key size             | Note                  |
 +===========+===================+======================+=======================+
-| DHM       | cc3xx             | Limited to 2048 bits |                       |
+| DHM       | nrf_cc3xx          | Limited to 2048 bits |                      |
 |           +-------------------+----------------------+-----------------------+
 |           | nrf_oberon        | N/A                  | Backend not supported |
 +-----------+-------------------+----------------------+-----------------------+
@@ -273,7 +298,7 @@ Feature support
 +-----------+-------------------+-------------+------------+
 | Algorithm | Backend           | Curve group | Curve type |
 +===========+===================+=============+============+
-| ECP       | cc3xx             | NIST        | secp192r1  |
+| ECP       | nrf_cc3xx         | NIST        | secp192r1  |
 |           |                   |             +------------+
 |           |                   |             | secp224r1  |
 |           |                   |             +------------+
@@ -320,7 +345,7 @@ Feature support
 +-----------+-------------------+-------------+------------+
 | Algorithm | Backend           | Curve group | Curve type |
 +===========+===================+=============+============+
-| ECDH      | cc3xx             | NIST        | secp192r1  |
+| ECDH      | nrf_cc3xx         | NIST        | secp192r1  |
 |           |                   |             +------------+
 |           |                   |             | secp224r1  |
 |           |                   |             +------------+
@@ -367,7 +392,7 @@ Feature support
 +-----------+-------------------+-------------+------------+
 | Algorithm | Backend           | Curve group | Curve type |
 +===========+===================+=============+============+
-| ECDSA     | cc3xx             | NIST        | secp192r1  |
+| ECDSA     | nrf_cc3xx         | NIST        | secp192r1  |
 |           |                   |             +------------+
 |           |                   |             | secp224r1  |
 |           |                   |             +------------+
@@ -412,7 +437,7 @@ Feature support
 +-----------+-------------------+-------------+------------+
 | Algorithm | Backend           | Curve group | Curve type |
 +===========+===================+=============+============+
-| ECJPAKE   | cc3xx             | NIST        | secp256r1  |
+| ECJPAKE   | nrf_cc3xx         | NIST        | secp256r1  |
 |           +-------------------+-------------+------------+
 |           | nrf_oberon        | NIST        | secp256r1  |
 +-----------+-------------------+-------------+------------+
@@ -465,13 +490,13 @@ Feature support
 +-----------+-------------------+--------------+
 | Algorithm | Backend           | Key size     |
 +===========+===================+==============+
-| RSA       | cc310             | 1024-bit key |
+| RSA       | nrf_cc310         | 1024-bit key |
 |           |                   +--------------+
 |           |                   | 1536-bit key |
 |           |                   +--------------+
 |           |                   | 2048-bit key |
 |           +-------------------+--------------+
-|           | cc312             | 1024-bit key |
+|           | nrf_cc312         | 1024-bit key |
 |           |                   +--------------+
 |           |                   | 1536-bit key |
 |           |                   +--------------+
@@ -516,23 +541,23 @@ Feature support
 +-----------+--------------------+----------------------------------------+
 | Algorithm | Supported backends | Note                                   |
 +===========+====================+========================================+
-| SHA-1     | cc3xx              |                                        |
+| SHA-1     | nrf_cc3xx          |                                        |
 |           +--------------------+                                        |
 |           | nrf_oberon         |                                        |
 +-----------+--------------------+----------------------------------------+
-| SHA-224   | cc3xx              | SHA-224 must be enabled when enabling  |
+| SHA-224   | nrf_cc3xx          | SHA-224 must be enabled when enabling  |
 |           +--------------------+ SHA-256                                |
 |           | nrf_oberon         |                                        |
 +-----------+--------------------+----------------------------------------+
-| SHA-256   | cc3xx              |                                        |
+| SHA-256   | nrf_cc3xx          |                                        |
 |           +--------------------+                                        |
 |           | nrf_oberon         |                                        |
 +-----------+--------------------+----------------------------------------+
-| SHA-384   | cc3xx              |                                        |
+| SHA-384   | nrf_cc3xx          |                                        |
 |           +--------------------+                                        |
 |           | nrf_oberon         |                                        |
 +-----------+--------------------+----------------------------------------+
-| SHA-512   | cc3xx              |                                        |
+| SHA-512   | nrf_cc3xx          |                                        |
 |           +--------------------+                                        |
 |           | nrf_oberon         |                                        |
 +-----------+--------------------+----------------------------------------+

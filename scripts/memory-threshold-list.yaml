@@ -1,4 +1,74 @@
 - scenarios:
+    - sample.bluetooth.fast_pair.locator_tag.release
+  platforms: # configuration for small memory devices
+    - nrf52dk/nrf52832
+    - nrf52833dk/nrf52833
+    - nrf54l15dk/nrf54l05/cpuapp
+  rom_increase: 512
+  ram_increase: 512
+  codeowners:
+    - nrfconnect/ncs-si-bluebagel
+
+- scenarios:
+    - sample.bluetooth.fast_pair.locator_tag.release
+  platforms: # configuration for large memory devices
+    - nrf52840dk/nrf52840
+    - nrf5340dk/nrf5340/cpuapp
+    - nrf5340dk/nrf5340/cpuapp/ns
+    - nrf54l15dk/nrf54l10/cpuapp
+    - nrf54l15dk/nrf54l15/cpuapp
+    - nrf54h20dk/nrf54h20/cpuapp
+    - thingy53/nrf5340/cpuapp
+    - thingy53/nrf5340/cpuapp/ns
+  rom_increase: 1024
+  ram_increase: 1024
+  codeowners:
+    - nrfconnect/ncs-si-bluebagel
+
+- scenarios:
+    - sample.find_my.locator_tag.release
+  platforms: # configuration for small memory devices
+    - nrf52dk/nrf52832
+    - nrf52833dk/nrf52833
+    - nrf54l15dk/nrf54l05/cpuapp
+  rom_increase: 512
+  ram_increase: 512
+  codeowners:
+    - nrfconnect/ncs-si-bluebagel
+
+- scenarios:
+    - sample.find_my.locator_tag.release
+  platforms: # configuration for large memory devices
+    - nrf52840dk/nrf52840
+    - nrf5340dk/nrf5340/cpuapp
+    - nrf5340dk/nrf5340/cpuapp/ns
+    - nrf54l15dk/nrf54l10/cpuapp
+    - nrf54l15dk/nrf54l15/cpuapp
+    - nrf54h20dk/nrf54h20/cpuapp
+  rom_increase: 1024
+  ram_increase: 1024
+  codeowners:
+    - nrfconnect/ncs-si-bluebagel
+
+- scenarios:
+    - sample.find_my.switchable_networks.release.ui_switch
+  platforms:
+    - all
+  rom_increase: 1024
+  ram_increase: 1024
+  codeowners:
+    - nrfconnect/ncs-si-bluebagel
+
+- scenarios:
+    - sample.find_my.switchable_networks.release.dfu_switch.*
+  platforms:
+    - all
+  rom_increase: 512
+  ram_increase: 512
+  codeowners:
+    - nrfconnect/ncs-si-bluebagel
+
+- scenarios:
     - sample.matter.template.release
   platforms:
     - nrf52840dk/nrf52840
@@ -84,10 +154,10 @@
   rom_increase: 512
   ram_increase: 256
   codeowners:
-    - MarekPieta
+    - nrfconnect/ncs-si-bluebagel
 
 - scenarios:
-    - applications.sdp.gpio.mbox
+    - applications.hpf.gpio.mbox
   platforms:
     - all
   rom_size: 3800
@@ -96,7 +166,7 @@
     - nrfconnect/ncs-ll-ursus
 
 - scenarios:
-    - applications.sdp.gpio.icmsg
+    - applications.hpf.gpio.icmsg
   platforms:
     - all
   rom_size: 5300
@@ -105,7 +175,7 @@
     - nrfconnect/ncs-ll-ursus
 
 - scenarios:
-    - applications.sdp.gpio.icbmsg
+    - applications.hpf.gpio.icbmsg
   platforms:
     - all
   rom_size: 8700
