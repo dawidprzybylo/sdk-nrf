@@ -20,6 +20,8 @@ manifest:
     # NCS repositories are hosted here.
     - name: ncs
       url-base: https://github.com/nrfconnect
+    - name: dapr
+      url-base: https://github.com/dawidprzybylo
     # Third-party repository sources:
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
@@ -143,8 +145,9 @@ manifest:
       revision: fdca9eba5d6fd3fdfdf87196cb4d0d37a5529632
     - name: nrfxlib
       repo-path: sdk-nrfxlib
+      remote: dapr
       path: nrfxlib
-      revision: 3acc454e3ddb409d6ddf3b894eb41bec479e2a16
+      revision: KRKNWK-21400
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tf-m/trusted-firmware-m
