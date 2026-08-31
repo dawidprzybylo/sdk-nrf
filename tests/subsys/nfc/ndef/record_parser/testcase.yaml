@@ -1,0 +1,13 @@
+tests:
+  nfc.ndef.record_parser.unittest:
+    sysbuild: true
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    tags:
+      - nfc
+      - ndef
+      - unittest
+      - sysbuild
+      - ci_tests_subsys_nfc
