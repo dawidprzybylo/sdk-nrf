@@ -74,7 +74,25 @@ int nfc_ndef_record_parse(struct nfc_ndef_bin_payload_desc *bin_pay_desc,
 		rec_desc->id_length = 0;
 		rec_desc->id = NULL;
 	}
+	
+	if (!(flags & NDEF_RECORD_SR_MASK)) {
+		uint32_t remaining = *nfc_data_len - expected_rec_size;
 
+		if (rec_desc->type_length > remaining) {
+			return -EINVAL;
+		}
+		remaining -= rec_desc->type_length;
+
+		if (rec_desc->id_length > remaining) {
+			return -EINVAL;
+		}
+		remaining -= rec_desc->id_length;
+
+		if (payload_length > remaining) {
+			return -EINVAL;
+		}
+	}
+	
 	expected_rec_size += rec_desc->type_length + rec_desc->id_length + payload_length;
 
 	if (expected_rec_size > *nfc_data_len) {
